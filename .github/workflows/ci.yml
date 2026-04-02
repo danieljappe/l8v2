@@ -187,12 +187,19 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /var/www/l8v2
-            git pull origin main
+            set -e
 
-            # Backend
+            # Pull latest — discard any local changes on VPS
+            cd /var/www/l8v2
+            git fetch origin
+            git reset --hard origin/main
+
+            # Fix dist ownership so Vite can clean and rebuild
+            sudo chown -R danieljappe:danieljappe /var/www/l8v2/L8V2_FE/dist || true
+
+            # Backend (keep devDependencies for tsc)
             cd /var/www/l8v2/L8v2_BE
-            npm ci --omit=dev
+            npm ci
             npm run build
 
             # Frontend
@@ -200,5 +207,5 @@ jobs:
             npm ci
             npm run build:events
 
-            # Restart pm2
+            # Only restart pm2 if all builds succeeded
             pm2 restart /var/www/ecosystem.config.js --update-env
