@@ -1,0 +1,89 @@
+import React, { useRef, useEffect } from 'react';
+import { useGLTF } from '@react-three/drei';
+import * as THREE from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+
+function Model({ mousePosition }) {
+    const { scene } = useGLTF('/l8_v2.gltf');
+    const modelRef = useRef();
+    const { camera } = useThree();
+
+    const target = new THREE.Vector3();
+    const intersectionPoint = new THREE.Vector3();
+    const planeNormal = new THREE.Vector3();
+    const plane = new THREE.Plane();
+    const raycaster = new THREE.Raycaster();
+    const rotationSpeed = 0.05;
+
+    useEffect(() => {
+        if (!camera) return; // Ensure camera is defined
+
+        // Update the target position based on mouse position
+        const updateTarget = () => {
+            planeNormal.set(0, 0, 1).normalize();
+            plane.setFromNormalAndCoplanarPoint(planeNormal, scene.position);
+            raycaster.setFromCamera(mousePosition, camera);
+            raycaster.ray.intersectPlane(plane, intersectionPoint);
+
+            target.set(intersectionPoint.x, intersectionPoint.y, 2);
+        };
+
+        updateTarget();
+    }, [camera, mousePosition, scene.position]); // Update whenever mousePosition changes
+
+    useFrame(() => {
+        if (modelRef.current) {
+            const direction = target.clone().sub(modelRef.current.position).normalize();
+            const desiredRotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+            modelRef.current.quaternion.slerp(desiredRotation, rotationSpeed);
+        }
+    });
+
+    useEffect(() => {
+        if (modelRef.current) {
+            modelRef.current.position.set(0, 0, -20);
+        }
+    }, []);
+
+    return <primitive ref={modelRef} object={scene} />;
+}
+
+export default Model;
+
+
+
+import React, { Suspense, useEffect, useRef, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+
+import * as THREE from 'three';
+import Model from './Model';
+
+const Scene = () => {
+    const [mousePosition, setMousePosition] = useState(new THREE.Vector2());
+    
+    useEffect(() => {
+        const handleMouseMove = (event) => {
+            const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+            setMousePosition(new THREE.Vector2(mouseX, mouseY));
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+        };
+    }, []);
+
+    return (
+        <Canvas camera={{ position: [0, 0, 0], fov: 90 }}>
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[0, 10, 5]} intensity={1} />
+            <Suspense fallback={null}>
+                <Model mousePosition={mousePosition} />
+            </Suspense>
+        </Canvas>
+    );
+}
+
+export default Scene;

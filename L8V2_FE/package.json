@@ -1,0 +1,48 @@
+{
+  "name": "vite-react-typescript-starter",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:events": "cross-env VITE_PLATFORM=events vite --port 3000",
+    "dev:booking": "cross-env VITE_PLATFORM=booking vite --port 3001",
+    "dev:platforms": "node scripts/dev-platforms.js",
+    "build": "npm run generate-sitemap && vite build",
+    "build:events": "npm run generate-sitemap && cross-env VITE_PLATFORM=events vite build",
+    "build:booking": "npm run generate-sitemap && cross-env VITE_PLATFORM=booking vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "generate-sitemap": "node scripts/generate-sitemap.js",
+    "create-favicons": "node scripts/create-favicons.js"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.114.0",
+    "@react-three/fiber": "^8.17.10",
+    "@types/three": "^0.180.0",
+    "framer-motion": "^10.18.0",
+    "lucide-react": "^0.344.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.6.2",
+    "react-select": "^5.10.1",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.1",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.18",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.9.1",
+    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
+    "eslint-plugin-react-refresh": "^0.4.11",
+    "globals": "^15.9.0",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.5.3",
+    "typescript-eslint": "^8.3.0",
+    "vite": "^5.4.2"
+  }
+}

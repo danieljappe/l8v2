@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://l8events.dk/sitemap.xml
+
+# Disallow admin pages
+Disallow: /admin/
+Disallow: /login
+
+# Allow all other content
+Allow: /events/
+Allow: /artists/
+Allow: /gallery/
+Allow: /booking/
+Allow: /uploads/
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
