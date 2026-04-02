@@ -1,4 +1,4 @@
-[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=danieljappe_l8v2)](https://sonarcloud.io/summary/new_code?id=danieljappe_l8v2)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=danieljappe_l8v2&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=danieljappe_l8v2)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=danieljappe_l8v2&metric=bugs)](https://sonarcloud.io/summary/new_code?id=danieljappe_l8v2)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=danieljappe_l8v2&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=danieljappe_l8v2)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=danieljappe_l8v2&metric=coverage)](https://sonarcloud.io/summary/new_code?id=danieljappe_l8v2)
