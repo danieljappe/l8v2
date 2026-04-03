@@ -1,8 +1,9 @@
+/* eslint-disable react-refresh/only-export-components */
 import React from 'react';
 import { slugify } from '../utils/slugUtils';
 
 interface StructuredDataProps {
-  data: any;
+  data: Record<string, unknown>;
 }
 
 export const StructuredData: React.FC<StructuredDataProps> = ({ data }) => {
@@ -42,7 +43,17 @@ export const createOrganizationSchema = () => ({
   }
 });
 
-export const createEventSchema = (event: any) => ({
+interface SchemaEvent {
+  title: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  venue?: { name?: string; address?: string };
+  isBookable?: boolean;
+  image?: string;
+}
+
+export const createEventSchema = (event: SchemaEvent) => ({
   "@context": "https://schema.org",
   "@type": "Event",
   "name": event.title,
@@ -69,10 +80,20 @@ export const createEventSchema = (event: any) => ({
   "image": event.image ? `https://l8events.dk/uploads/events/${event.image}` : "https://l8events.dk/l8logo.webp"
 });
 
-export const createArtistSchema = (artist: any) => {
+interface SchemaArtist {
+  name: string;
+  bio?: string;
+  imageUrl?: string;
+  website?: string;
+  genre?: string;
+  city?: string;
+  socialMedia?: { url: string }[];
+}
+
+export const createArtistSchema = (artist: SchemaArtist) => {
   // Extract social media URLs from the socialMedia array
-  const socialUrls = artist.socialMedia && Array.isArray(artist.socialMedia)
-    ? artist.socialMedia.map((social: any) => social.url).filter(Boolean)
+  const socialUrls = Array.isArray(artist.socialMedia)
+    ? artist.socialMedia.map((social) => social.url).filter(Boolean)
     : [];
   
   // Add website if available
@@ -148,7 +169,7 @@ export const createWebSiteSchema = () => ({
 });
 
 // Create BreadcrumbList for navigation breadcrumbs in Google search results
-export const createBreadcrumbSchema = (items: Array<{ name: string; url: string }>) => {
+export const createBreadcrumbSchema = (items: { name: string; url: string }[]) => {
   const baseUrl = "https://l8events.dk";
   
   return {
@@ -164,7 +185,7 @@ export const createBreadcrumbSchema = (items: Array<{ name: string; url: string 
 };
 
 // Create SiteNavigationElement for site navigation structure
-export const createSiteNavigationSchema = (navItems: Array<{ name: string; url: string }>) => {
+export const createSiteNavigationSchema = (navItems: { name: string; url: string }[]) => {
   const baseUrl = "https://l8events.dk";
   
   return {

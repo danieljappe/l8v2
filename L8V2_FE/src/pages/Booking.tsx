@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Music, Star, Globe, Instagram, Search, Filter, Play, Calendar, Phone, Mail, Menu, X, Facebook, Youtube } from 'lucide-react';
+import { Users, Music, Star, Instagram, Search, Play, Calendar, Menu, X, Facebook } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { apiService, Artist } from '../services/api';
+import type { Artist } from '../services/api';
+import { apiService } from '../services/api';
 import ArtistModal from '../components/ArtistModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { constructFullUrl } from '../utils/imageUtils';
@@ -15,8 +16,6 @@ const Booking: React.FC = () => {
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [genreFilter, setGenreFilter] = useState<string>('all');
-  const [priceFilter, setPriceFilter] = useState<string>('all');
-  const [availabilityFilter, setAvailabilityFilter] = useState<string>('all');
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -79,14 +78,14 @@ const Booking: React.FC = () => {
         } else if (response.data) {
           setArtists(response.data);
         }
-      } catch (err) {
+      } catch {
         setError('Failed to fetch artists');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchArtists();
+    void fetchArtists();
   }, []);
 
   const handleArtistClick = (artist: Artist) => {
@@ -100,8 +99,8 @@ const Booking: React.FC = () => {
   // Filter artists based on search and filters
   const filteredArtists = artists.filter(artist => {
     const matchesSearch = artist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (artist.bio && artist.bio.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (artist.genre && artist.genre.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (artist.bio?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (artist.genre?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesGenre = genreFilter === 'all' || artist.genre === genreFilter;
     // Note: Price and availability filters would need additional data fields
     return matchesSearch && matchesGenre;

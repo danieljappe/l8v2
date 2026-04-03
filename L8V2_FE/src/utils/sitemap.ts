@@ -98,13 +98,13 @@ const slugify = (text: string): string => {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-')
     .replace(/_/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-')
     .replace(/^-+/, '')
     .replace(/-+$/, '');
 };
 
-export const addDynamicPages = (events: any[], artists: any[]): SitemapEntry[] => {
+export const addDynamicPages = (events: { title: string; updatedAt?: string }[], artists: { name: string; updatedAt?: string }[]): SitemapEntry[] => {
   const dynamicPages: SitemapEntry[] = [];
 
   // Add event pages

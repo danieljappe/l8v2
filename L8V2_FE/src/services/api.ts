@@ -35,7 +35,7 @@ interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
-  errorData?: any; // Additional error details from backend
+  errorData?: unknown; // Additional error details from backend
 }
 
 // Generic API client
@@ -60,7 +60,7 @@ class ApiClient {
         extraHeaders = options.headers as Record<string, string>;
       }
       if (token) {
-        extraHeaders['Authorization'] = `Bearer ${token}`;
+        extraHeaders.Authorization = `Bearer ${token}`;
       }
       const headers = Object.assign({}, baseHeaders, extraHeaders);
       
@@ -90,7 +90,7 @@ class ApiClient {
           const errorData = await response.json();
           // Return the error details so the frontend can handle them properly
           return { error: errorData.message || errorData.details || 'Bad Request', errorData };
-        } catch (parseError) {
+        } catch {
           // If we can't parse the response, fall back to generic error
           return { error: 'Bad Request - Unable to parse error details' };
         }
@@ -121,7 +121,7 @@ class ApiClient {
   }
 
   // POST request
-  async post<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -129,7 +129,7 @@ class ApiClient {
   }
 
   // PUT request
-  async put<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -154,7 +154,7 @@ const transformApiResponse = <T>(data: T): T => {
     }
     
     // Handle objects
-    const transformed = { ...data } as any;
+    const transformed = { ...data } as Record<string, unknown>;
     for (const [key, value] of Object.entries(transformed)) {
       if (key === 'imageUrl' && typeof value === 'string') {
         transformed[key] = constructImageUrl(value);
@@ -192,10 +192,10 @@ export interface Artist {
   bio?: string;
   imageUrl?: string;
   website?: string;
-  socialMedia?: Array<{
+  socialMedia?: {
     platform: string;
     url: string;
-  }>;
+  }[];
   embeddings?: Embedding[];
   genre?: string;
   isBookable: boolean;

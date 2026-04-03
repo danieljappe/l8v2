@@ -4,9 +4,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useEvents, useApi } from '../hooks/useApi';
 import { useSEO } from '../hooks/useSEO';
-import { apiService, User } from '../services/api';
+import type { User } from '../services/api';
+import { apiService } from '../services/api';
 
-const useCountAnimation = (end: number, duration: number = 2) => {
+const useCountAnimation = (end: number, duration = 2) => {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (latest) => Math.round(latest));
 
@@ -381,7 +382,7 @@ const AboutUs = () => {
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
-                        const fallback = e.currentTarget.parentElement?.querySelector('.initials-fallback') as HTMLElement;
+                        const fallback = e.currentTarget.parentElement?.querySelector('.initials-fallback');
                         if (fallback) fallback.classList.remove('hidden');
                       }}
                     />

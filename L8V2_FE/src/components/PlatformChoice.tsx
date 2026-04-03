@@ -48,9 +48,9 @@ const PlatformChoice: React.FC = () => {
   const handlePlatformChoice = (platform: string) => {
     localStorage.setItem('l8-platform-choice', platform);
     if (platform === 'events') {
-      navigate('/home');
+      void navigate('/home');
     } else if (platform === 'booking') {
-      navigate('/booking');
+      void navigate('/booking');
     }
   };
 

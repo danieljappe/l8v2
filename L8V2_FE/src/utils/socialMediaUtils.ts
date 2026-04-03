@@ -11,7 +11,7 @@ export interface SocialMediaItem {
  * Converts social media data from various formats to a consistent array format
  * Handles both old string formats and new array formats
  */
-export function normalizeSocialMedia(socialMedia: any): SocialMediaItem[] {
+export function normalizeSocialMedia(socialMedia: unknown): SocialMediaItem[] {
   if (!socialMedia) {
     return [];
   }

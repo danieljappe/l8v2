@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Music } from 'lucide-react';
-import { Artist } from '../../types/admin';
-import { apiService, User } from '../../services/api';
-import EmbeddingManager from '../EmbeddingManager';
+import type { Artist } from '../../types/admin';
+import type { User } from '../../services/api';
+import { apiService } from '../../services/api';
 import SimpleEmbeddingInput from './SimpleEmbeddingInput';
 import { normalizeSocialMedia } from '../../utils/socialMediaUtils';
 
@@ -19,11 +19,11 @@ const ArtistFormModal: React.FC<ArtistFormModalProps> = ({ artist, onSave, onClo
     bio: '',
     imageUrl: '',
     website: '',
-    socialMedia: [] as Array<{ platform: string; url: string }>,
+    socialMedia: [] as { platform: string; url: string }[],
     genre: '',
     isBookable: false,
     bookingUserId: '',
-    embeddings: [] as any[]
+    embeddings: [] as { type: string; embedCode: string }[]
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ const ArtistFormModal: React.FC<ArtistFormModalProps> = ({ artist, onSave, onClo
         setUsersLoading(false);
       }
     };
-    loadUsers();
+    void loadUsers();
   }, []);
 
   useEffect(() => {
@@ -62,7 +62,7 @@ const ArtistFormModal: React.FC<ArtistFormModalProps> = ({ artist, onSave, onClo
         genre: artist.genre || '',
         isBookable: artist.isBookable || false,
         bookingUserId: artist.bookingUserId || '',
-        embeddings: artist.embeddings || []
+        embeddings: artist.embeddings ?? []
       });
     } else {
       setFormData({
@@ -85,7 +85,7 @@ const ArtistFormModal: React.FC<ArtistFormModalProps> = ({ artist, onSave, onClo
     setError(null);
 
     try {
-      const artistData: any = {
+      const artistData = {
         ...formData,
         bookingUserId: formData.isBookable && formData.bookingUserId ? formData.bookingUserId : null,
         updatedAt: new Date().toISOString()
@@ -114,7 +114,7 @@ const ArtistFormModal: React.FC<ArtistFormModalProps> = ({ artist, onSave, onClo
           onClose();
         }
       }
-    } catch (err) {
+    } catch {
       setError('Failed to save artist');
     } finally {
       setLoading(false);

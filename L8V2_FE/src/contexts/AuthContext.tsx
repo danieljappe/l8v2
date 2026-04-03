@@ -1,5 +1,7 @@
-import React, { createContext, useContext, ReactNode } from 'react';
-import { useAuth, AuthUser } from '../hooks/useAuth';
+import type { ReactNode } from 'react';
+import React, { createContext, useContext } from 'react';
+import type { AuthUser } from '../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -23,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuthContext() {
   const context = useContext(AuthContext);
   if (context === undefined) {

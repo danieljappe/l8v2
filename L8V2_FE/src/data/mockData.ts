@@ -1,4 +1,4 @@
-import { Event, Artist, Venue, GalleryItem, Message } from '../types/admin';
+import type { Event, Artist, Venue, GalleryItem, Message } from '../types/admin';
 
 export const mockEvents: Event[] = [
   {

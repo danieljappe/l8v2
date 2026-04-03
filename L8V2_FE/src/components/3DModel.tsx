@@ -33,6 +33,7 @@ function Model({ mousePosition, onReady }: ModelProps) {
     };
 
     updateTarget();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera, mousePosition, scene.position]);
 
   useFrame(() => {

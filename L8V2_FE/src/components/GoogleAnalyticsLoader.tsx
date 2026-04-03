@@ -18,9 +18,10 @@ const GoogleAnalyticsLoader: React.FC = () => {
 
     // Initialize gtag
     window.dataLayer = window.dataLayer || [];
-    function gtag(...args: any[]) {
+    function gtag(...args: unknown[]) {
       window.dataLayer.push(args);
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).gtag = gtag;
 
     gtag('js', new Date());

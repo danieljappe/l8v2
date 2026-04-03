@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Mail, User, Clock, Trash2, CheckCircle, AlertCircle, Loader2, Eye, X } from 'lucide-react';
-import { Message } from '../../types/admin';
+import type { Message } from '../../types/admin';
 
 interface MessagesListProps {
   messages: Message[];

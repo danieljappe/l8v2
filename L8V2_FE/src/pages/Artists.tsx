@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Music, Globe } from 'lucide-react';
-import { apiService, Artist } from '../services/api';
+import type { Artist } from '../services/api';
+import { apiService } from '../services/api';
 import ArtistModal from '../components/ArtistModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { constructFullUrl } from '../utils/imageUtils';
@@ -24,14 +25,14 @@ const Artists: React.FC = () => {
         } else if (response.data) {
           setArtists(response.data);
         }
-      } catch (err) {
+      } catch {
         setError('Failed to fetch artists');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchArtists();
+    void fetchArtists();
   }, []);
 
   const handleArtistClick = (artist: Artist) => {
@@ -45,8 +46,8 @@ const Artists: React.FC = () => {
   // Filter artists based on search and genre
   const filteredArtists = artists.filter(artist => {
     const matchesSearch = artist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (artist.bio && artist.bio.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (artist.genre && artist.genre.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (artist.bio?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (artist.genre?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesGenre = genreFilter === 'all' || artist.genre === genreFilter;
     return matchesSearch && matchesGenre;
   });

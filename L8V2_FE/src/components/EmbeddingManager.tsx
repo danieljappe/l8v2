@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit2, Trash2, Music, Youtube, Volume2, X, Check, AlertCircle } from 'lucide-react';
-import { apiService, Embedding } from '../services/api';
+import type { Embedding } from '../services/api';
+import { apiService } from '../services/api';
 
 interface EmbeddingManagerProps {
   artistId: string;
@@ -42,7 +43,7 @@ const EmbeddingManager: React.FC<EmbeddingManagerProps> = ({
         setEmbedCode('');
         setIsAdding(false);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to add embedding');
     } finally {
       setLoading(false);
@@ -70,7 +71,7 @@ const EmbeddingManager: React.FC<EmbeddingManagerProps> = ({
         setEmbedCode('');
         setEditingId(null);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to update embedding');
     } finally {
       setLoading(false);
@@ -93,7 +94,7 @@ const EmbeddingManager: React.FC<EmbeddingManagerProps> = ({
         const updatedEmbeddings = embeddings.filter(emb => emb.id !== embeddingId);
         onEmbeddingsChange(updatedEmbeddings);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to delete embedding');
     } finally {
       setLoading(false);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
-import { Venue } from '../../types/admin';
+import type { Venue } from '../../types/admin';
 import VenueMapEmbed from '../VenueMapEmbed';
 
 const DEFAULT_VENUE_FORM: Partial<Venue> = {

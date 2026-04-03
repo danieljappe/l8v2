@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Music, Ticket, Users, AlertCircle, Camera } from 'lucide-react';
+import { Calendar, Clock, MapPin, Music, Ticket, AlertCircle, Camera } from 'lucide-react';
 import Header from '../components/Header';
 import ArtistModal from '../components/ArtistModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useEvent } from '../hooks/useApi';
-import { Artist } from '../services/api';
+import type { Artist } from '../services/api';
 import { constructFullUrl } from '../utils/imageUtils';
 import VenueMapEmbed from '../components/VenueMapEmbed';
 

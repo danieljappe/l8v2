@@ -13,7 +13,7 @@ export default function Login() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin');
+      void navigate('/admin');
     }
   }, [isAuthenticated, navigate]);
 
@@ -33,12 +33,12 @@ export default function Login() {
       const data = await res.json();
       if (data.token) {
         login(data.token);
-        navigate('/admin');
+        void navigate('/admin');
       } else {
         setError('No token received');
       }
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
     }

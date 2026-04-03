@@ -4,7 +4,8 @@ import { Camera, Calendar, User, Tag, ArrowLeft, ArrowRight, MapPin, Clock, Exte
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useGalleryImages } from '../hooks/useApi';
-import { GalleryImage, Event, apiService } from '../services/api';
+import type { GalleryImage, Event} from '../services/api';
+import { apiService } from '../services/api';
 import { constructFullUrl } from '../utils/imageUtils';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { slugify } from '../utils/slugUtils';
@@ -17,7 +18,7 @@ const Gallery: React.FC = () => {
   const [eventMap, setEventMap] = useState<Record<string, Event>>({});
 
   // Filter published images - temporarily show all images for debugging
-  const publishedImages = images || [];
+  const publishedImages = images ?? [];
 
   // Fetch events for event linking
   useEffect(() => {
@@ -36,7 +37,7 @@ const Gallery: React.FC = () => {
         console.error('Failed to fetch events:', error);
       }
     };
-    fetchEvents();
+    void fetchEvents();
   }, []);
 
   const containerVariants = {
@@ -71,10 +72,10 @@ const Gallery: React.FC = () => {
       if (eventInfoElement) {
         const linkedEvent = eventMap[image.eventId];
         if (linkedEvent) {
-          navigate(`/events/${slugify(linkedEvent.title)}`);
+          void navigate(`/events/${slugify(linkedEvent.title)}`);
         } else {
           // Fallback to ID if event not found in map
-          navigate(`/events/${image.eventId}`);
+          void navigate(`/events/${image.eventId}`);
         }
         return;
       }
@@ -87,10 +88,10 @@ const Gallery: React.FC = () => {
   const handleEventNavigation = (eventId: string) => {
     const linkedEvent = eventMap[eventId];
     if (linkedEvent) {
-      navigate(`/events/${slugify(linkedEvent.title)}`);
+      void navigate(`/events/${slugify(linkedEvent.title)}`);
     } else {
       // Fallback to ID if event not found in map
-      navigate(`/events/${eventId}`);
+      void navigate(`/events/${eventId}`);
     }
   };
 

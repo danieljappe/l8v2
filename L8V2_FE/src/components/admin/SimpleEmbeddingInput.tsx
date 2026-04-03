@@ -2,18 +2,24 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, X, Music, Youtube, Volume2, AlertCircle } from 'lucide-react';
 
-interface SimpleEmbeddingInputProps {
-  embeddings: any[];
-  onEmbeddingsChange: (embeddings: any[]) => void;
-  artistId?: string; // Optional artist ID for API calls
-  isEditing?: boolean; // Whether we're editing an existing artist
+interface EmbeddingItem {
+  type: string;
+  embedCode: string;
+  [key: string]: unknown;
 }
 
-const SimpleEmbeddingInput: React.FC<SimpleEmbeddingInputProps> = ({ 
-  embeddings, 
+interface SimpleEmbeddingInputProps {
+  embeddings: EmbeddingItem[];
+  onEmbeddingsChange: (embeddings: EmbeddingItem[]) => void;
+  artistId?: string;
+  isEditing?: boolean;
+}
+
+const SimpleEmbeddingInput: React.FC<SimpleEmbeddingInputProps> = ({
+  embeddings,
   onEmbeddingsChange,
-  artistId,
-  isEditing = false
+  artistId: _artistId,
+  isEditing: _isEditing = false
 }) => {
   const [embedCode, setEmbedCode] = useState('');
   const [error, setError] = useState<string | null>(null);

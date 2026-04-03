@@ -180,10 +180,10 @@ const HeroEventWidget: React.FC<{ event: Event; scrollOpacity: MotionValue<numbe
   }, [event.date]);
 
   const artists   = event.eventArtists ?? [];
-  const soldPct   = event.totalTickets > 0
+  const _soldPct  = event.totalTickets > 0
     ? Math.min((event.soldTickets / event.totalTickets) * 100, 100)
     : 0;
-  const remaining = event.totalTickets - event.soldTickets;
+  const _remaining = event.totalTickets - event.soldTickets;
   const isToday   = daysUntil === 0;
 
   return (
@@ -497,13 +497,13 @@ const PinnedShowcase: React.FC = () => {
                       { src: 'https://l8events.dk/uploads/gallery/image-1765280815686-895715630.png', pos: { bottom: '2%', right: '4%', width: '46%' }, rotate: -4, z: 3, yMV: s3p3Y },
                     ],
                   },
-                ] as Array<{
+                ] as {
                   slideOpacity:  ReturnType<typeof useTransform>;
                   slidePtr:      ReturnType<typeof useTransform>;
                   slideScale:    ReturnType<typeof useTransform>;
                   slideActive:   boolean;
-                  photos: Array<{ src: string; pos: Record<string, string>; rotate: number; z: number; yMV: ReturnType<typeof useTransform> }>;
-                }>).map(({ slideOpacity, slidePtr, slideScale, slideActive, photos }) => (
+                  photos: { src: string; pos: Record<string, string>; rotate: number; z: number; yMV: ReturnType<typeof useTransform> }[];
+                }[]).map(({ slideOpacity, slidePtr, slideScale, slideActive, photos }) => (
                   <motion.div
                     key={photos[0].src + photos[0].rotate}
                     style={{ opacity: slideOpacity, scale: slideScale, pointerEvents: slidePtr }}

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { X, Globe, Music, Calendar, ExternalLink } from 'lucide-react';
 import { constructFullUrl } from '../utils/imageUtils';
-import { Artist } from '../services/api';
+import type { Artist } from '../services/api';
 import EmbeddingManager from './EmbeddingManager';
 import EmbedRenderer from './EmbedRenderer';
 import { normalizeSocialMedia } from '../utils/socialMediaUtils';
@@ -15,7 +15,7 @@ interface ArtistModalProps {
 }
 
 const ArtistModal: React.FC<ArtistModalProps> = ({ artist, onClose, isAdmin = false }) => {
-  const [embeddings, setEmbeddings] = useState(artist?.embeddings || []);
+  const [embeddings, setEmbeddings] = useState(artist?.embeddings ?? []);
 
   // Update embeddings when artist changes
   useEffect(() => {

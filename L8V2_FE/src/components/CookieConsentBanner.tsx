@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Settings, X, ChevronDown, ChevronUp } from 'lucide-react';
 
-type ConsentPreferences = {
+interface ConsentPreferences {
   necessary: boolean;
   analytics: boolean;
   marketing: boolean;
-};
+}
 
-type ConsentPreferencesProps = {
+interface ConsentPreferencesProps {
   preferences: ConsentPreferences;
   onChange: (preferences: ConsentPreferences) => void;
-};
+}
 
 const CookiePreferences: React.FC<ConsentPreferencesProps> = ({ preferences, onChange }) => {
   const handleToggle = (category: keyof ConsentPreferences) => {

@@ -61,10 +61,10 @@ export function useAuth() {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
       return payload.exp > currentTime;
-    } catch (error) {
+    } catch {
       return false;
     }
-  }, []); // No dependencies needed for this function
+  }, []); // isTokenValid is stable — no dependencies needed
 
   // Initialize auth state
   useEffect(() => {
@@ -89,7 +89,8 @@ export function useAuth() {
         user: null,
       });
     }
-  }, []); // Remove isTokenValid dependency since it's stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // isTokenValid is stable — no dependencies needed
 
   // Login function
   const login = useCallback((token: string) => {
@@ -111,7 +112,7 @@ export function useAuth() {
       loading: false,
       user: null,
     });
-    navigateRef.current('/login');
+    void navigateRef.current('/login');
   }, []); // No dependencies needed
 
   // Check authentication on route changes - use ref to avoid dependency issues

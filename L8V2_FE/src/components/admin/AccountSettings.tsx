@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AuthUser } from '../../hooks/useAuth';
-import { apiService, User as ApiUser } from '../../services/api';
+import type { AuthUser } from '../../hooks/useAuth';
+import type { User as ApiUser } from '../../services/api';
+import { apiService } from '../../services/api';
 
 interface AccountSettingsProps {
   user?: AuthUser | null;
 }
 
-type FormState = {
+interface FormState {
   firstName: string;
   lastName: string;
   email: string;
@@ -14,20 +15,20 @@ type FormState = {
   address: string;
   imageUrl: string;
   role: string;
-};
+}
 
-type PasswordFormState = {
+interface PasswordFormState {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
-};
+}
 
-type NewUserFormState = {
+interface NewUserFormState {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
-};
+}
 
 const createFormState = (user?: Partial<ApiUser>): FormState => ({
   firstName: user?.firstName || '',
@@ -110,7 +111,7 @@ export default function AccountSettings({ user }: AccountSettingsProps) {
       }
     };
 
-    fetchUser();
+    void fetchUser();
 
     return () => {
       isMounted = false;
@@ -141,7 +142,7 @@ export default function AccountSettings({ user }: AccountSettingsProps) {
   }, [userId]);
 
   useEffect(() => {
-    loadUsers();
+    void loadUsers();
   }, [loadUsers]);
 
   const hasChanges = useMemo(() => {
@@ -300,7 +301,7 @@ export default function AccountSettings({ user }: AccountSettingsProps) {
       } else {
         setUserManagementSuccess('User created successfully.');
         setNewUserForm(emptyNewUserState);
-        loadUsers();
+        void loadUsers();
       }
     } catch {
       setUserManagementError('Failed to create user.');
@@ -328,7 +329,7 @@ export default function AccountSettings({ user }: AccountSettingsProps) {
         setUserManagementError(response.error);
       } else {
         setUserManagementSuccess('User deleted successfully.');
-        loadUsers();
+        void loadUsers();
       }
     } catch {
       setUserManagementError('Failed to delete user.');

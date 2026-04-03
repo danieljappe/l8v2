@@ -4,7 +4,7 @@ import { Calendar, Clock, MapPin, Music, Ticket, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { useEvents } from '../hooks/useApi';
-import { Event } from '../services/api';
+import type { Event } from '../services/api';
 import { constructFullUrl } from '../utils/imageUtils';
 import { slugify } from '../utils/slugUtils';
 
@@ -42,8 +42,8 @@ const EventList: React.FC = () => {
     ...event,
     status: new Date(event.date) >= new Date() ? 'upcoming' : 'past',
     color: getEventColor(event.id),
-    artists: event.eventArtists?.map(ea => ea.artist.name) || []
-  })) || [];
+    artists: event.eventArtists?.map(ea => ea.artist.name) ?? []
+  })) ?? [];
 
   function getEventColor(eventId: string): string {
     const colors = ['l8-blue', 'l8-beige', 'l8-blue-light', 'l8-beige-dark', 'l8-blue-dark', 'l8-beige-light'];

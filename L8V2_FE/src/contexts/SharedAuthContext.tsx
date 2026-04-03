@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 
 interface User {
@@ -19,6 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -53,7 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       return { success: false, error: 'Login failed' };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Network error' };
     } finally {
       setLoading(false);
@@ -80,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         logout();
       }
-    } catch (error) {
+    } catch {
       logout();
     } finally {
       setLoading(false);
@@ -88,7 +90,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    refreshUser();
+    void refreshUser();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value: AuthContextType = {

@@ -6,7 +6,6 @@ import Gallery from './pages/Gallery';
 import AboutUs from './pages/AboutUs';
 import Contact from './pages/Contact';
 import Artists from './pages/Artists';
-import Booking from './pages/Booking';
 import BookingHome from './pages/BookingHome';
 import BookingArtists from './pages/BookingArtists';
 import ArtistPage from './pages/ArtistPage';
@@ -40,7 +39,6 @@ const AppContent = () => {
   const isAdminPage = location.pathname === '/admin';
   const isLoginPage = location.pathname === '/login';
   const isBookingPage = location.pathname.startsWith('/booking');
-  const isEventsPage = location.pathname.startsWith('/events');
 
   return (
     <div className="relative min-h-screen">

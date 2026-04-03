@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Tag, User, Calendar, MapPin, Clock, Copy, Check } from 'lucide-react';
-import { GalleryItem } from '../../types/admin';
-import { apiService, Event } from '../../services/api';
+import type { GalleryItem } from '../../types/admin';
+import type { Event } from '../../services/api';
+import { apiService } from '../../services/api';
 
 interface GalleryListProps {
   gallery: GalleryItem[];
@@ -44,7 +45,7 @@ export default function GalleryList({
         setLoadingEvents(false);
       }
     };
-    fetchEvents();
+    void fetchEvents();
   }, []);
 
   const handleEdit = (item: GalleryItem) => {
@@ -169,7 +170,7 @@ export default function GalleryList({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleCopyUrl(item.url);
+                              void handleCopyUrl(item.url);
                             }}
                             className={`p-2 rounded-full shadow-lg transition-colors ${
                               copiedUrl === item.url 
@@ -275,7 +276,7 @@ function GalleryForm({ item, onSubmit, onCancel, onAddGallery, events, loadingEv
     caption: item?.caption || '',
     eventId: item?.eventId || '',
     photographer: item?.photographer || '',
-    tags: item?.tags || [],
+    tags: item?.tags ?? [],
     category: item?.category || 'event' as GalleryItem['category'],
     orderIndex: item?.orderIndex || 0,
     isPublished: item?.isPublished || false,
@@ -296,7 +297,7 @@ function GalleryForm({ item, onSubmit, onCancel, onAddGallery, events, loadingEv
         caption: item.caption || '',
         eventId: item.eventId || '',
         photographer: item.photographer || '',
-        tags: item.tags || [],
+        tags: item.tags ?? [],
         category: item.category || 'event',
         orderIndex: item.orderIndex || 0,
         isPublished: item.isPublished || false,
@@ -355,8 +356,8 @@ function GalleryForm({ item, onSubmit, onCancel, onAddGallery, events, loadingEv
         
         onAddGallery(newGalleryItem);
         onCancel(); // Close the form since the item is now added
-      } catch (err: any) {
-        setUploadError(err.message || 'Upload failed');
+      } catch (err: unknown) {
+        setUploadError(err instanceof Error ? err.message : 'Upload failed');
       } finally {
         setUploading(false);
       }

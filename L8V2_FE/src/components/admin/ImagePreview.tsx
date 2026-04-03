@@ -12,7 +12,7 @@ interface ImagePreviewProps {
   overlaySubtext?: string;
   clickable?: boolean;
   // New props for gallery navigation
-  allImages?: Array<{ src: string; alt: string; id?: string }>;
+  allImages?: { src: string; alt: string; id?: string }[];
   currentImageIndex?: number;
   onImageChange?: (index: number) => void;
 }
@@ -97,6 +97,7 @@ export default function ImagePreview({
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPreview, currentIndex]);
 
   // Update current index when prop changes

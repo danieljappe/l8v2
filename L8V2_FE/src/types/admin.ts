@@ -13,13 +13,13 @@ export interface Event {
   image: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   createdAt: string;
-  eventArtists?: Array<{
+  eventArtists?: {
     id: string;
     artist: {
       id: string;
       name: string;
     };
-  }>;
+  }[];
   // Add backend-compatible fields
   ticketPrice?: number;
   totalTickets?: number;
@@ -38,11 +38,11 @@ export interface Artist {
   bio?: string;
   imageUrl?: string;
   website?: string;
-  socialMedia?: Array<{
+  socialMedia?: {
     platform: string;
     url: string;
-  }>;
-  embeddings?: Array<{
+  }[];
+  embeddings?: {
     id: string;
     platform: 'spotify' | 'youtube' | 'soundcloud';
     embedCode: string;
@@ -50,7 +50,7 @@ export interface Artist {
     description?: string;
     thumbnailUrl?: string;
     createdAt: string;
-  }>;
+  }[];
   genre?: string;
   isBookable: boolean;
   bookingUserId?: string;

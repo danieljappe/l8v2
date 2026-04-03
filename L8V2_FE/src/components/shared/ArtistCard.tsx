@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Globe, Play, Music } from 'lucide-react';
-import { Artist } from '../../services/api';
+import { Globe, Play } from 'lucide-react';
+import type { Artist } from '../../services/api';
 import { constructFullUrl } from '../../utils/imageUtils';
 
 interface ArtistCardProps {

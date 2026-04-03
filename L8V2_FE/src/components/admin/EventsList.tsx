@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Calendar, MapPin, Users, DollarSign } from 'lucide-react';
-import { Event } from '../../types/admin';
+import type { Event } from '../../types/admin';
 import EventForm from './EventForm';
-import { Artist, Venue } from '../../types/admin';
+import type { Artist, Venue } from '../../types/admin';
 
 interface EventsListProps {
   events: Event[];
@@ -36,6 +36,7 @@ export default function EventsList({
         setEditingEvent(updatedEvent);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, editingEvent?.id]);
 
   const handleEdit = (event: Event) => {

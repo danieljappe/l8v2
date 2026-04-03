@@ -23,7 +23,7 @@ const Breadcrumbs: React.FC = () => {
   if (isArtistPage && pathnames[2]) {
     try {
       artistSlug = decodeURIComponent(pathnames[2]);
-    } catch (e) {
+    } catch (_e) {
       // If decoding fails, use the raw value
       artistSlug = pathnames[2];
     }
@@ -41,10 +41,10 @@ const Breadcrumbs: React.FC = () => {
       return artistName.toLowerCase().replace(/\s+/g, '-');
     };
     
-    return artists.find(a => getArtistUrl(a.name) === artistSlug!.toLowerCase()) || null;
+    return artists.find(a => getArtistUrl(a.name) === artistSlug.toLowerCase()) ?? null;
   }, [isArtistPage, artists, artistSlug]);
 
-  const breadcrumbNameMap: { [key: string]: string } = {
+  const breadcrumbNameMap: Record<string, string> = {
     home: 'Home',
     events: 'Begivenheder',
     artists: 'Kunstnere',
@@ -96,7 +96,7 @@ const Breadcrumbs: React.FC = () => {
             // If artist fails to load, try to decode and format the slug as fallback
             try {
               displayName = decodeURIComponent(value).replace(/-/g, ' ');
-            } catch (e) {
+            } catch {
               // If decoding fails, just use the value with hyphens replaced
               displayName = value.replace(/-/g, ' ');
             }

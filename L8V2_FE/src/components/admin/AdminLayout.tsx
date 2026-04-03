@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
-import { AdminSection } from '../../types/admin';
-import { AuthUser } from '../../hooks/useAuth';
+import type { AdminSection } from '../../types/admin';
+import type { AuthUser } from '../../hooks/useAuth';
 
 interface AdminLayoutProps {
   activeSection: AdminSection;

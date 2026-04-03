@@ -68,9 +68,9 @@ const Header: React.FC = () => {
   const handlePlatformSwitch = () => {
     const platform = getPlatformFromPath();
     if (platform === 'booking') {
-      navigate('/events');
+      void navigate('/events');
     } else {
-      navigate('/booking');
+      void navigate('/booking');
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Calendar, Users, MapPin, Image, MessageSquare } from 'lucide-react';
-import { Event, Artist, Venue, GalleryItem, Message } from '../../types/admin';
+import type { Event, Artist, Venue, GalleryItem, Message } from '../../types/admin';
 
 interface DashboardOverviewProps {
   events: Event[];

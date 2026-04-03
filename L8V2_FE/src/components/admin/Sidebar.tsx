@@ -13,9 +13,10 @@ import {
   UserCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AdminSection } from '../../types/admin';
-import { AuthUser } from '../../hooks/useAuth';
-import { apiService, User as ApiUser } from '../../services/api';
+import type { AdminSection } from '../../types/admin';
+import type { AuthUser } from '../../hooks/useAuth';
+import type { User as ApiUser } from '../../services/api';
+import { apiService } from '../../services/api';
 
 type SidebarUserProfile = ApiUser & {
   firstName?: string;
@@ -88,7 +89,7 @@ export default function Sidebar({
       }
     };
 
-    loadUserProfile();
+    void loadUserProfile();
 
     return () => {
       isMounted = false;

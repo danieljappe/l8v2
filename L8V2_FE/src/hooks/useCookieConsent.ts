@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export type ConsentPreferences = {
+export interface ConsentPreferences {
   necessary: boolean;
   analytics: boolean;
   marketing: boolean;
-};
+}
 
 export const useCookieConsent = () => {
   const [preferences, setPreferences] = useState<ConsentPreferences>(() => {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Users, Music, Star, Globe, Instagram, Search, Calendar, Phone, Mail, Menu, X, Facebook, Youtube, ArrowRight } from 'lucide-react';
+import { Users, Star, Calendar, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const BookingHome: React.FC = () => {
@@ -22,12 +22,6 @@ const BookingHome: React.FC = () => {
     }
   ];
 
-  const stats = [
-    { number: '50+', label: 'Artister' },
-    { number: '100+', label: 'Bookinger' },
-    { number: '5', label: 'Års Erfaring' },
-    { number: '98%', label: 'Tilfredshed' }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-booking-dark via-booking-dark to-booking-teal-dark">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Edit, Trash2, Globe, Music, Calendar } from 'lucide-react';
-import { Artist } from '../../types/admin';
+import type { Artist } from '../../types/admin';
 import ArtistFormModal from './ArtistFormModal';
 
 interface ArtistsListProps {
@@ -240,7 +240,7 @@ export default function ArtistsList({
       )}
 
       {/* Artist Form Modal for editing/creating */}
-      {(selectedArtist || isCreating) && (
+      {(selectedArtist ?? isCreating) && (
         <ArtistFormModal
           artist={selectedArtist}
           onClose={handleCloseModal}

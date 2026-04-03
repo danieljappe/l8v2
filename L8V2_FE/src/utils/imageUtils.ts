@@ -29,7 +29,7 @@ export const constructFullUrl = (relativeUrl: string | null | undefined): string
 };
 
 // Utility function to get the best available image URL from a gallery image
-export const getBestImageUrl = (image: any): string => {
+export const getBestImageUrl = (image: Record<string, string | undefined>): string => {
   // Prefer thumbnail for small displays, medium for medium displays, large for large displays
   if (image.thumbnailUrl) return constructFullUrl(image.thumbnailUrl);
   if (image.mediumUrl) return constructFullUrl(image.mediumUrl);

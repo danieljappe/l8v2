@@ -10,13 +10,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   { ignores: ['dist', 'scripts'] },
+
+  // ── Vite config (Node environment, separate tsconfig) ──────────────────────
+  {
+    files: ['vite.config.ts'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json'],
+        tsconfigRootDir: __dirname,
+      },
+    },
+  },
+
+  // ── Application source (browser environment) ────────────────────────────────
   {
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
     ],
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
@@ -34,8 +48,20 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 
+      // Async event handlers in JSX are fine — React will swallow rejections,
+      // so use no-floating-promises on the call sites instead of banning them
+      // on attributes entirely.
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        { checksVoidReturn: { attributes: false } },
+      ],
+
       // Grandfathered warnings — fix gradually, then promote to 'error'
-      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-useless-escape': 'warn',
 
@@ -47,9 +73,8 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
 
-      // Strict type-safety rules — these are errors from day one
+      // Strict type-safety rules — errors from day one
       '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
       '@typescript-eslint/prefer-optional-chain': 'error',

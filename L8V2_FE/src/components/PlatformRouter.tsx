@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getPlatformFromPath, shouldShowPlatformChoice } from '../utils/subdomainUtils';
+import { shouldShowPlatformChoice } from '../utils/subdomainUtils';
 import PlatformChoice from './PlatformChoice';
 
 interface PlatformRouterProps {

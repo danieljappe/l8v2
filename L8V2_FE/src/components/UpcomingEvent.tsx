@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import ArtistModal from './ArtistModal';
 import LoadingSpinner from './LoadingSpinner';
 import { useEvents, useArtists } from '../hooks/useApi';
-import { Artist, Event } from '../services/api';
+import type { Artist } from '../services/api';
 import { slugify } from '../utils/slugUtils';
 
 const UpcomingEvent: React.FC = () => {
@@ -14,7 +14,7 @@ const UpcomingEvent: React.FC = () => {
 
   // Fetch events and artists from API
   const { data: events, loading: eventsLoading, error: eventsError } = useEvents();
-  const { data: artists, loading: artistsLoading, error: artistsError } = useArtists();
+  const { data: _artists, loading: artistsLoading, error: artistsError } = useArtists();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -48,13 +48,13 @@ const UpcomingEvent: React.FC = () => {
   });
 
   // Get artists for the upcoming event
-  const eventArtists = upcomingEvent?.eventArtists?.map(ea => ea.artist) || [];
+  const eventArtists = upcomingEvent?.eventArtists?.map(ea => ea.artist) ?? [];
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (upcomingEvent) {
-      navigate(`/events/${slugify(upcomingEvent.title)}`, { replace: true });
+      void navigate(`/events/${slugify(upcomingEvent.title)}`, { replace: true });
     }
   };
 
@@ -159,7 +159,7 @@ const UpcomingEvent: React.FC = () => {
                 { icon: Calendar, label: 'Dato', value: formatEventDate(upcomingEvent.date), color: 'blue' },
                 { icon: Clock, label: 'Tidspunkt', value: upcomingEvent.startTime || '21:00 - 03:00', color: 'green' },
                 { icon: MapPin, label: 'Sted', value: upcomingEvent.venue?.name || 'Warehouse District', color: 'orange' }
-              ].map((detail, index) => (
+              ].map((detail, _index) => (
                 <motion.div
                   key={detail.label}
                   variants={itemVariants}
@@ -187,7 +187,7 @@ const UpcomingEvent: React.FC = () => {
                 Fremhævede Kunstnere
               </motion.h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                {eventArtists.slice(0, 4).map((artist, index) => (
+                {eventArtists.slice(0, 4).map((artist, _index) => (
                   <motion.div
                     key={artist.id}
                     variants={itemVariants}

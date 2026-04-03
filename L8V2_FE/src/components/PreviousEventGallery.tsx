@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { useGalleryImages, useEvents } from '../hooks/useApi';
 import { constructFullUrl } from '../utils/imageUtils';
-import { GalleryImage } from '../services/api';
+import type { GalleryImage } from '../services/api';
 import { slugify } from '../utils/slugUtils';
 
 const PreviousEventGallery: React.FC = () => {
@@ -59,7 +59,7 @@ const PreviousEventGallery: React.FC = () => {
   // Get gallery images for the recent event (or use all if no specific event)
   const eventGalleryImages = galleryImages?.filter(img => 
     !recentPastEvent || img.eventId === recentPastEvent.id
-  ) || [];
+  ) ?? [];
 
   // Use actual gallery images, sorted by orderIndex
   const displayImages = eventGalleryImages

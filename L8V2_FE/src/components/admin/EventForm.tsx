@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Event, Artist, Venue } from '../../types/admin';
+import type { Event, Artist, Venue } from '../../types/admin';
 import Select from 'react-select';
 
 interface EventFormProps {
@@ -37,7 +37,7 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
         date: event.date,
         time: event.time,
         endTime: event.endTime || '',
-        artists: event.artists || [],
+        artists: event.artists ?? [],
         venue: event.venue || '',
         price: event.price,
         capacity: event.capacity,
@@ -67,7 +67,7 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
   const handleAddSelectedArtists = () => {
     if (formData.artists.length > 0 && event && onAddArtistToEvent) {
       // Filter out artists that are already in the event
-      const existingArtistIds = event.eventArtists?.map(ea => ea.artist.id) || [];
+      const existingArtistIds = event.eventArtists?.map(ea => ea.artist.id) ?? [];
       const newArtistIds = formData.artists.filter(artistId => !existingArtistIds.includes(artistId));
       
       if (newArtistIds.length === 0) {
@@ -114,7 +114,7 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
   };
 
   const handleRemoveArtist = (eventId: string, artistId: string) => {
-    if (event && event.eventArtists && onRemoveArtist) {
+    if (event?.eventArtists && onRemoveArtist) {
       // Optimistically remove from local state
       const artistIndex = event.eventArtists.findIndex(ea => ea.artist.id === artistId);
       if (artistIndex !== -1) {
@@ -189,7 +189,7 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
                 isMulti
                 options={availableArtists}
                 value={artistOptions.filter(option => formData.artists.includes(option.value))}
-                onChange={(selected) => setFormData(prev => ({ ...prev, artists: selected ? selected.map((s: any) => s.value) : [] }))}
+                onChange={(selected) => setFormData(prev => ({ ...prev, artists: selected ? selected.map((s: { value: string }) => s.value) : [] }))}
                 classNamePrefix="react-select"
                 placeholder="Select artists..."
                 isClearable
@@ -294,8 +294,8 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
               <Select
                 name="venue"
                 options={venueOptions}
-                value={venueOptions.find(option => option.value === formData.venue) || null}
-                onChange={(selected) => setFormData(prev => ({ ...prev, venue: selected ? (selected as any).value : '' }))}
+                value={venueOptions.find(option => option.value === formData.venue) ?? null}
+                onChange={(selected) => setFormData(prev => ({ ...prev, venue: selected ? (selected as { value: string }).value : '' }))}
                 classNamePrefix="react-select"
                 placeholder="Select venue..."
                 isClearable

@@ -7,11 +7,10 @@ import VenuesList from '../components/admin/VenuesList';
 import GalleryList from '../components/admin/GalleryList';
 import MessagesList from '../components/admin/MessagesList';
 import AccountSettings from '../components/admin/AccountSettings';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useAuth } from '../hooks/useAuth';
-import { mockEvents, mockArtists, mockVenues, mockGallery } from '../data/mockData';
-import { AdminSection, Event, Artist, Venue, GalleryItem, Message } from '../types/admin';
-import { apiService, Event as ApiEvent, Artist as ApiArtist, Venue as ApiVenue, ContactMessage as ApiContactMessage } from '../services/api';
+import type { AdminSection, Event, Artist, Venue, GalleryItem, Message } from '../types/admin';
+import type { Event as ApiEvent, Artist as ApiArtist, Venue as ApiVenue, ContactMessage as ApiContactMessage } from '../services/api';
+import { apiService } from '../services/api';
 import { constructFullUrl } from '../utils/imageUtils';
 import ConstraintErrorModal from '../components/admin/ConstraintErrorModal';
 
@@ -38,7 +37,7 @@ function mapApiEventToAdminEvent(apiEvent: ApiEvent): Event {
     price: apiEvent.ticketPrice || 0,
     capacity: apiEvent.capacity || apiEvent.totalTickets || 0,
     image: apiEvent.imageUrl || '',
-    status: apiEvent.status as any,
+    status: apiEvent.status,
     createdAt: apiEvent.createdAt,
     eventArtists: apiEvent.eventArtists ? apiEvent.eventArtists.map(ea => ({
       id: ea.id,
@@ -86,9 +85,9 @@ function mapAdminEventToApiEvent(event: Partial<Event>, venues?: Venue[]): Parti
         venueId = foundVenue.id;
       }
     }
-    (apiEvent as any).venueId = venueId;
+    (apiEvent as Record<string, unknown>).venueId = venueId;
   } else {
-    (apiEvent as any).venueId = null;
+    (apiEvent as Record<string, unknown>).venueId = null;
   }
 
   return apiEvent;
@@ -101,8 +100,8 @@ function mapApiArtistToAdminArtist(apiArtist: ApiArtist): Artist {
     bio: apiArtist.bio || '',
     imageUrl: apiArtist.imageUrl || '',
     website: apiArtist.website || '',
-    socialMedia: apiArtist.socialMedia || [],
-    embeddings: apiArtist.embeddings || [],
+    socialMedia: apiArtist.socialMedia ?? [],
+    embeddings: apiArtist.embeddings ?? [],
     genre: apiArtist.genre || '',
     isBookable: apiArtist.isBookable || false,
     bookingUserId: apiArtist.bookingUserId,
@@ -129,14 +128,14 @@ function mapApiVenueToAdminVenue(apiVenue: ApiVenue): Venue {
     description: apiVenue.description || '',
     amenities: [],
     imageUrl: apiVenue.imageUrl || '',
-    images: apiVenue.images || [],
+    images: apiVenue.images ?? [],
     mapEmbedHtml: apiVenue.mapEmbedHtml || '',
     createdAt: apiVenue.createdAt,
     updatedAt: apiVenue.updatedAt,
   };
 }
 
-function mapApiGalleryToAdminGallery(apiGallery: any): GalleryItem {
+function mapApiGalleryToAdminGallery(apiGallery: Record<string, unknown>): GalleryItem {
   return {
     id: apiGallery.id,
     filename: apiGallery.filename || '',
@@ -183,19 +182,19 @@ export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('dashboard');
   // Events: use backend
   const [events, setEvents] = useState<Event[]>([]);
-  const [eventsLoading, setEventsLoading] = useState(false);
-  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [_eventsLoading, setEventsLoading] = useState(false);
+  const [_eventsError, setEventsError] = useState<string | null>(null);
 
   // Artists and Venues: use backend
   const [artists, setArtists] = useState<Artist[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [artistsLoading, setArtistsLoading] = useState(false);
-  const [venuesLoading, setVenuesLoading] = useState(false);
+  const [_artistsLoading, setArtistsLoading] = useState(false);
+  const [_venuesLoading, setVenuesLoading] = useState(false);
 
   // The rest still use local storage for now
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [galleryLoading, setGalleryLoading] = useState(false);
-  const [galleryError, setGalleryError] = useState<string | null>(null);
+  const [_galleryLoading, setGalleryLoading] = useState(false);
+  const [_galleryError, setGalleryError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
@@ -218,7 +217,7 @@ export default function Admin() {
       setEventsError(null);
       const res = await apiService.getEvents();
       if (res.data) {
-        setEvents((res.data as ApiEvent[]).map(mapApiEventToAdminEvent));
+        setEvents((res.data).map(mapApiEventToAdminEvent));
       } else {
         setEventsError(res.error || 'Failed to fetch events');
       }
@@ -228,7 +227,7 @@ export default function Admin() {
       setArtistsLoading(true);
       const res = await apiService.getArtists();
       if (res.data) {
-        setArtists((res.data as ApiArtist[]).map(mapApiArtistToAdminArtist));
+        setArtists((res.data).map(mapApiArtistToAdminArtist));
       }
       setArtistsLoading(false);
     };
@@ -236,7 +235,7 @@ export default function Admin() {
       setVenuesLoading(true);
       const res = await apiService.getVenues();
       if (res.data) {
-        setVenues((res.data as ApiVenue[]).map(mapApiVenueToAdminVenue));
+        setVenues((res.data).map(mapApiVenueToAdminVenue));
       }
       setVenuesLoading(false);
     };
@@ -245,7 +244,7 @@ export default function Admin() {
       setGalleryError(null);
       const res = await apiService.getGalleryImages();
       if (res.data) {
-        setGallery((res.data as any[]).map(mapApiGalleryToAdminGallery));
+        setGallery((res.data as Record<string, unknown>[]).map(mapApiGalleryToAdminGallery));
       } else {
         setGalleryError(res.error || 'Failed to fetch gallery images');
       }
@@ -256,24 +255,24 @@ export default function Admin() {
       setMessagesError(null);
       const res = await apiService.getContactMessages();
       if (res.data) {
-        setMessages((res.data as ApiContactMessage[]).map(mapApiContactMessageToAdminMessage));
+        setMessages((res.data).map(mapApiContactMessageToAdminMessage));
       } else {
         setMessagesError(res.error || 'Failed to fetch contact messages');
       }
       setMessagesLoading(false);
     };
-    fetchEvents();
-    fetchArtists();
-    fetchVenues();
-    fetchGallery();
-    fetchMessages();
+    void fetchEvents();
+    void fetchArtists();
+    void fetchVenues();
+    void fetchGallery();
+    void fetchMessages();
   }, []);
 
   // Event handlers (backend)
   const handleAddEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>) => {
     const res = await apiService.createEvent(mapAdminEventToApiEvent(eventData, venues));
     if (res.data) {
-      setEvents((prev) => [...prev, mapApiEventToAdminEvent(res.data as ApiEvent)]);
+      setEvents((prev) => [...prev, mapApiEventToAdminEvent(res.data!)]);
     } else {
       alert(res.error || 'Failed to create event');
     }
@@ -282,7 +281,7 @@ export default function Admin() {
   const handleUpdateEvent = async (updatedEvent: Event) => {
     const res = await apiService.updateEvent(updatedEvent.id, mapAdminEventToApiEvent(updatedEvent, venues));
     if (res.data) {
-      setEvents((prev) => prev.map(event => event.id === updatedEvent.id ? mapApiEventToAdminEvent(res.data as ApiEvent) : event));
+      setEvents((prev) => prev.map(event => event.id === updatedEvent.id ? mapApiEventToAdminEvent(res.data!) : event));
     } else {
       alert(res.error || 'Failed to update event');
     }
@@ -301,7 +300,7 @@ export default function Admin() {
   const handleAddArtist = async (artistData: Omit<Artist, 'id' | 'createdAt'>) => {
     const res = await apiService.createArtist(artistData);
     if (res.data) {
-      setArtists((prev) => [...prev, mapApiArtistToAdminArtist(res.data as ApiArtist)]);
+      setArtists((prev) => [...prev, mapApiArtistToAdminArtist(res.data!)]);
     } else {
       alert(res.error || 'Failed to create artist');
     }
@@ -310,7 +309,7 @@ export default function Admin() {
   const handleUpdateArtist = async (updatedArtist: Artist) => {
     const res = await apiService.updateArtist(updatedArtist.id, updatedArtist);
     if (res.data) {
-      setArtists((prev) => prev.map(artist => artist.id === updatedArtist.id ? mapApiArtistToAdminArtist(res.data as ApiArtist) : artist));
+      setArtists((prev) => prev.map(artist => artist.id === updatedArtist.id ? mapApiArtistToAdminArtist(res.data!) : artist));
     } else {
       alert(res.error || 'Failed to update artist');
     }
@@ -349,9 +348,9 @@ export default function Admin() {
   const handleAddArtistToEvent = async (eventId: string, artistId: string) => {
     try {
       const eventArtistData = {
-        event: { id: eventId } as any,
-        artist: { id: artistId } as any
-      };
+        event: { id: eventId },
+        artist: { id: artistId }
+      } as Record<string, unknown>;
       
       const res = await apiService.createEventArtist(eventArtistData);
       
@@ -376,7 +375,7 @@ export default function Admin() {
   const handleAddVenue = async (venueData: Partial<Venue>) => {
     const res = await apiService.createVenue(venueData);
     if (res.data) {
-      setVenues((prev) => [...prev, mapApiVenueToAdminVenue(res.data as ApiVenue)]);
+      setVenues((prev) => [...prev, mapApiVenueToAdminVenue(res.data!)]);
     } else {
       alert(res.error || 'Failed to create venue');
     }
@@ -386,7 +385,7 @@ export default function Admin() {
     const { id, ...venueData } = updatedVenue;
     const res = await apiService.updateVenue(id, venueData);
     if (res.data) {
-      setVenues((prev) => prev.map(venue => venue.id === updatedVenue.id ? mapApiVenueToAdminVenue(res.data as ApiVenue) : venue));
+      setVenues((prev) => prev.map(venue => venue.id === updatedVenue.id ? mapApiVenueToAdminVenue(res.data!) : venue));
     } else {
       alert(res.error || 'Failed to update venue');
     }
@@ -452,7 +451,7 @@ export default function Admin() {
     
     if (res.data) {
       setMessages(messages.map(msg => 
-        msg.id === id ? mapApiContactMessageToAdminMessage(res.data as ApiContactMessage) : msg
+        msg.id === id ? mapApiContactMessageToAdminMessage(res.data!) : msg
       ));
     } else {
       alert(res.error || 'Failed to mark message as read');

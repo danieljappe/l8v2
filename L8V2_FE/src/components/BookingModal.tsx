@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Phone, Calendar, User } from 'lucide-react';
-import { Artist, User as ApiUser } from '../services/api';
+import type { Artist } from '../services/api';
 
 interface BookingModalProps {
   artist: Artist | null;
@@ -9,9 +9,9 @@ interface BookingModalProps {
 }
 
 const BookingModal: React.FC<BookingModalProps> = ({ artist, onClose }) => {
-  if (!artist || !artist.isBookable) return null;
+  if (!artist?.isBookable) return null;
 
-  const bookingUser = artist.bookingUser as ApiUser | undefined;
+  const bookingUser = artist.bookingUser;
 
   return (
     <AnimatePresence>

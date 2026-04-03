@@ -10,7 +10,8 @@ import {
   ExternalLink,
   Video
 } from 'lucide-react';
-import { apiService, Artist } from '../services/api';
+import type { Artist } from '../services/api';
+import { apiService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmbedRenderer from '../components/EmbedRenderer';
 import BookingModal from '../components/BookingModal';
@@ -66,7 +67,7 @@ const ArtistPage: React.FC = () => {
       }
     };
 
-    fetchArtist();
+    void fetchArtist();
   }, [artistName]);
 
   // SEO Configuration
@@ -104,7 +105,7 @@ const ArtistPage: React.FC = () => {
     : 'artist booking, L8 Events, dansk musik, event booking';
 
   // Generate SEO image
-  const seoImage = artist && artist.imageUrl
+  const seoImage = artist?.imageUrl
     ? constructFullUrl(artist.imageUrl)
     : undefined;
 

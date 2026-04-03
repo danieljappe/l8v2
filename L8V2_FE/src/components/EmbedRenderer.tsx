@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Music, Youtube, Volume2, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 interface EmbedRendererProps {
   embedCode: string;
@@ -10,10 +10,10 @@ interface EmbedRendererProps {
 }
 
 const EmbedRenderer: React.FC<EmbedRendererProps> = ({ 
-  embedCode, 
-  platform, 
-  title, 
-  className = '' 
+  embedCode,
+  platform,
+  title: _title,
+  className = ''
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -72,18 +72,6 @@ const EmbedRenderer: React.FC<EmbedRendererProps> = ({
     }
   }, [embedCode, platform]);
 
-  const getPlatformIcon = () => {
-    switch (platform) {
-      case 'spotify':
-        return <Music className="w-100 h-8 text-green-500" />;
-      case 'youtube':
-        return <Youtube className="w-8 h-8 text-red-500" />;
-      case 'soundcloud':
-        return <Volume2 className="w-8 h-8 text-orange-500" />;
-      default:
-        return <Music className="w-8 h-8 text-gray-500" />;
-    }
-  };
 
   if (hasError) {
     return (

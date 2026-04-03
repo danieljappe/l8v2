@@ -19,9 +19,9 @@ export function slugify(text: string): string {
     .replace(/\s+/g, '-')
     .replace(/_/g, '-')
     // Remove all non-word characters except hyphens
-    .replace(/[^\w\-]+/g, '')
+    .replace(/[^\w-]+/g, '')
     // Replace multiple hyphens with single hyphen
-    .replace(/\-\-+/g, '-')
+    .replace(/--+/g, '-')
     // Remove leading and trailing hyphens
     .replace(/^-+/, '')
     .replace(/-+$/, '');
