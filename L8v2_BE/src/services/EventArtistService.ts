@@ -69,10 +69,4 @@ export class EventArtistService {
     return this.eventArtistRepository.update(eventArtist.id, { setDuration: duration });
   }
 
-  async updateArtistFee(eventId: string, artistId: string, fee: number): Promise<EventArtist | null> {
-    const eventArtist = await this.eventArtistRepository.findByEventAndArtist(eventId, artistId);
-    if (!eventArtist) return null;
-
-    return this.eventArtistRepository.update(eventArtist.id, { fee });
-  }
 } 

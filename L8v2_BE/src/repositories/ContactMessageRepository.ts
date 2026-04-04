@@ -1,4 +1,4 @@
-import { ContactMessage, MessageType, MessageStatus } from '../models/ContactMessage';
+import { ContactMessage, MessageStatus } from '../models/ContactMessage';
 import { BaseRepository } from './BaseRepository';
 import { FindOptionsWhere, Between } from 'typeorm';
 
@@ -22,12 +22,6 @@ export class ContactMessageRepository extends BaseRepository<ContactMessage> {
   async findReadMessages(): Promise<ContactMessage[]> {
     return this.repository.findBy({
       isRead: true
-    } as FindOptionsWhere<ContactMessage>);
-  }
-
-  async findByType(type: MessageType): Promise<ContactMessage[]> {
-    return this.repository.findBy({
-      type
     } as FindOptionsWhere<ContactMessage>);
   }
 

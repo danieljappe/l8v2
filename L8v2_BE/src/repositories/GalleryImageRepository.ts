@@ -1,6 +1,6 @@
 import { GalleryImage, GalleryCategory } from '../models/GalleryImage';
 import { BaseRepository } from './BaseRepository';
-import { FindOptionsWhere, Between, In } from 'typeorm';
+import { FindOptionsWhere, Between } from 'typeorm';
 
 export class GalleryImageRepository extends BaseRepository<GalleryImage> {
   constructor() {
@@ -35,15 +35,6 @@ export class GalleryImageRepository extends BaseRepository<GalleryImage> {
     return this.repository.find({
       where: {
         category,
-        isPublished: true
-      }
-    });
-  }
-
-  async findByTags(tags: string[]): Promise<GalleryImage[]> {
-    return this.repository.find({
-      where: {
-        tags: In(tags),
         isPublished: true
       }
     });

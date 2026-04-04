@@ -37,22 +37,4 @@ export class VenueService {
     return this.venueRepository.findByCity(city);
   }
 
-  async addVenueImage(id: string, imageUrl: string): Promise<Venue | null> {
-    const venue = await this.venueRepository.findById(id);
-    if (!venue) return null;
-
-    const images = venue.images || [];
-    images.push(imageUrl);
-
-    return this.venueRepository.update(id, { images });
-  }
-
-  async removeVenueImage(id: string, imageUrl: string): Promise<Venue | null> {
-    const venue = await this.venueRepository.findById(id);
-    if (!venue) return null;
-
-    const images = venue.images?.filter((img: string) => img !== imageUrl) || [];
-
-    return this.venueRepository.update(id, { images });
-  }
 }

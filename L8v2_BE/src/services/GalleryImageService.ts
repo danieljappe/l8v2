@@ -44,10 +44,6 @@ export class GalleryImageService {
     return this.galleryImageRepository.findByCategory(category);
   }
 
-  async findImagesByTags(tags: string[]): Promise<GalleryImage[]> {
-    return this.galleryImageRepository.findByTags(tags);
-  }
-
   async findPublishedImages(): Promise<GalleryImage[]> {
     return this.galleryImageRepository.findPublishedImages();
   }
@@ -64,18 +60,4 @@ export class GalleryImageService {
     return this.galleryImageRepository.update(id, { isPublished: false });
   }
 
-  async updateImageOrder(id: string, orderIndex: number): Promise<GalleryImage | null> {
-    return this.galleryImageRepository.update(id, { orderIndex });
-  }
-
-  async updateImageTags(id: string, tags: string[]): Promise<GalleryImage | null> {
-    const image = await this.galleryImageRepository.findById(id);
-    if (!image) return null;
-
-    return this.galleryImageRepository.update(id, { tags });
-  }
-
-  async updateImageUrls(id: string, urls: { thumbnailUrl?: string; mediumUrl?: string; largeUrl?: string }): Promise<GalleryImage | null> {
-    return this.galleryImageRepository.update(id, urls);
-  }
 } 

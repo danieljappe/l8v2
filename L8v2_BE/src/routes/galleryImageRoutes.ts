@@ -313,29 +313,13 @@ const uploadGalleryImage: RequestHandler = async (req, res) => {
     // Create file path relative to uploads directory
     const filePath = `/uploads/gallery/${req.file.filename}`;
     
-    // Parse tags safely
-    let tags: string[] = [];
-    if (req.body.tags) {
-      try {
-        tags = JSON.parse(req.body.tags);
-        if (!Array.isArray(tags)) {
-          tags = [];
-        }
-        // Sanitize tags
-        tags = tags.filter(tag => typeof tag === 'string' && tag.trim().length > 0).slice(0, 10); // Limit to 10 tags
-      } catch (e) {
-        console.warn('Failed to parse tags, using empty array');
-        tags = [];
-      }
-    }
-
     // Validate eventId if provided
     const eventId = req.body.eventId;
     if (eventId && !(await validateEventId(eventId))) {
       return res.status(400).json({ message: 'Invalid eventId provided' });
     }
     
-    console.log(`Creating gallery image record with title: "${title}", description: "${description}", category: ${category}, tags: ${tags.length}`);
+    console.log(`Creating gallery image record with title: "${title}", description: "${description}", category: ${category}`);
     
     // Create gallery image record
     const galleryImage = galleryImageRepository.create({
@@ -343,10 +327,8 @@ const uploadGalleryImage: RequestHandler = async (req, res) => {
       url: filePath,
       caption: description,
       category: category,
-      tags: tags,
       photographer: req.body.uploadedBy || 'Admin',
       isPublished: true,
-      orderIndex: 0,
       eventId: eventId || null
     });
 

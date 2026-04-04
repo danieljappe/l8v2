@@ -1,4 +1,4 @@
-import { ContactMessage, MessageType, MessageStatus } from '../models/ContactMessage';
+import { ContactMessage, MessageStatus } from '../models/ContactMessage';
 import { ContactMessageRepository } from '../repositories/ContactMessageRepository';
 
 export class ContactMessageService {
@@ -51,10 +51,6 @@ export class ContactMessageService {
     return this.repository.findReadMessages();
   }
 
-  async findByType(type: MessageType): Promise<ContactMessage[]> {
-    return this.repository.findByType(type);
-  }
-
   async findByStatus(status: MessageStatus): Promise<ContactMessage[]> {
     return this.repository.findByStatus(status);
   }
@@ -81,16 +77,12 @@ export class ContactMessageService {
     return await this.repository.save(message);
   }
 
-  async markMessageAsReplied(id: string, adminNotes?: string): Promise<ContactMessage | null> {
+  async markMessageAsReplied(id: string): Promise<ContactMessage | null> {
     const message = await this.findMessageById(id);
     if (!message) {
       return null;
     }
     message.status = MessageStatus.REPLIED;
-    message.repliedAt = new Date();
-    if (adminNotes) {
-      message.adminNotes = adminNotes;
-    }
     return await this.repository.save(message);
   }
 

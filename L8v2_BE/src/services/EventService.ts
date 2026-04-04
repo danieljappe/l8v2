@@ -52,18 +52,4 @@ export class EventService {
     return this.eventRepository.update(id, { status });
   }
 
-  async updateEventCapacity(id: string, capacity: number): Promise<Event | null> {
-    return this.eventRepository.update(id, { capacity });
-  }
-
-  async updateEventAttendees(id: string, currentAttendees: number): Promise<Event | null> {
-    const event = await this.eventRepository.findById(id);
-    if (!event) return null;
-
-    if (event.capacity && currentAttendees > event.capacity) {
-      throw new Error('Cannot exceed event capacity');
-    }
-
-    return this.eventRepository.update(id, { currentAttendees });
-  }
 } 
