@@ -11,8 +11,6 @@ const validEvent = {
   description: 'An integration-test event',
   date: '2026-06-15',
   startTime: '20:00',
-  ticketPrice: 50.0,
-  totalTickets: 100,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -106,8 +104,6 @@ describe('POST /api/events', () => {
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('id');
     expect(res.body.title).toBe(validEvent.title);
-    expect(res.body.ticketPrice).toBe(validEvent.ticketPrice);
-    expect(res.body.totalTickets).toBe(validEvent.totalTickets);
   });
 });
 

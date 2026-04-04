@@ -1,12 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-export enum MessageType {
-  GENERAL = 'general',
-  BOOKING = 'booking',
-  SUPPORT = 'support',
-  FEEDBACK = 'feedback'
-}
-
 export enum MessageStatus {
   PENDING = 'pending',
   READ = 'read',
@@ -33,13 +26,6 @@ export class ContactMessage {
 
   @Column({
     type: 'enum',
-    enum: MessageType,
-    default: MessageType.GENERAL
-  })
-  type!: MessageType;
-
-  @Column({
-    type: 'enum',
     enum: MessageStatus,
     default: MessageStatus.PENDING
   })
@@ -52,22 +38,7 @@ export class ContactMessage {
   subject?: string;
 
   @Column({ nullable: true })
-  eventDate?: Date;
-
-  @Column({ nullable: true })
   artistType?: string;
-
-  @Column({ type: 'text', nullable: true })
-  eventDetails?: string;
-
-  @Column({ nullable: true })
-  budget?: number;
-
-  @Column({ type: 'text', nullable: true })
-  adminNotes?: string;
-
-  @Column({ nullable: true })
-  repliedAt?: Date;
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -12,7 +12,6 @@ import artistRoutes from './routes/artistRoutes';
 import eventRoutes from './routes/eventRoutes';
 import venueRoutes from './routes/venueRoutes';
 import eventArtistRoutes from './routes/eventArtistRoutes';
-import ticketRoutes from './routes/ticketRoutes';
 import galleryImageRoutes from './routes/galleryImageRoutes';
 import contactMessageRoutes from './routes/contactMessageRoutes';
 import dotenv from 'dotenv';
@@ -114,7 +113,6 @@ export function createApp(): Express {
   app.use('/api/events', eventRoutes);
   app.use('/api/venues', venueRoutes);
   app.use('/api/event-artists', eventArtistRoutes);
-  app.use('/api/tickets', ticketRoutes);
   app.use('/api/gallery', galleryImageRoutes);
   app.use('/api/contact', contactMessageRoutes);
   app.use('/api/auth', authRoutes);

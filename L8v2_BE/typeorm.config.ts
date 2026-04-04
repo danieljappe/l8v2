@@ -3,10 +3,11 @@ import { User } from './src/models/User';
 import { Artist } from './src/models/Artist';
 import { Event } from './src/models/Event';
 import { Venue } from './src/models/Venue';
-import { Ticket } from './src/models/Ticket';
 import { GalleryImage } from './src/models/GalleryImage';
 import { ContactMessage } from './src/models/ContactMessage';
 import { EventArtist } from './src/models/EventArtist';
+import { AuditLog } from './src/models/AuditLog';
+import { BillettoEventData } from './src/models/BillettoEventData';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -40,10 +41,11 @@ export default new DataSource({
     Artist,
     Event,
     Venue,
-    Ticket,
     GalleryImage,
     ContactMessage,
-    EventArtist
+    EventArtist,
+    AuditLog,
+    BillettoEventData
   ],
   migrations: ['src/migrations/*.ts'],
   subscribers: ['src/subscribers/*.ts']

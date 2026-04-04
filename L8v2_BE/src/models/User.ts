@@ -21,9 +21,6 @@ export class User {
   phoneNumber?: string;
 
   @Column({ nullable: true })
-  address?: string;
-
-  @Column({ nullable: true })
   imageUrl?: string;
 
   @Column({ nullable: true })

@@ -23,12 +23,6 @@ export class Event {
   @Column({ nullable: true })
   endTime?: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  ticketPrice!: number;
-
-  @Column()
-  totalTickets!: number;
-
   @Column({ default: 0 })
   soldTickets!: number;
 
@@ -40,12 +34,6 @@ export class Event {
 
   @Column({ default: 'draft' })
   status!: string;
-
-  @Column({ nullable: true })
-  capacity?: number;
-
-  @Column({ default: 0 })
-  currentAttendees!: number;
 
   @Column({ nullable: true })
   billettoURL?: string;

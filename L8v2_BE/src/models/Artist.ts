@@ -31,9 +31,6 @@ export class Artist {
   @Column({ nullable: true })
   imageUrl?: string;
 
-  @Column({ nullable: true })
-  website?: string;
-
   @Column({ type: 'json', nullable: true })
   socialMedia?: SocialMedia[];
 

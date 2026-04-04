@@ -24,9 +24,6 @@ export class EventArtist {
   @Column({ nullable: true })
   setDuration?: number;
 
-  @Column({ nullable: true })
-  fee?: number;
-
   @CreateDateColumn()
   createdAt!: Date;
 

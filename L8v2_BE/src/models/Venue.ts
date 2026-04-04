@@ -18,12 +18,6 @@ export class Venue {
   @Column({ nullable: true })
   city?: string;
 
-  @Column({ nullable: true })
-  imageUrl?: string;
-
-  @Column('simple-array', { nullable: true })
-  images?: string[];
-
   @Column({ type: 'text', nullable: true })
   mapEmbedHtml?: string;
 

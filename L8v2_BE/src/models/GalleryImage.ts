@@ -20,15 +20,6 @@ export class GalleryImage {
   url!: string;
 
   @Column({ nullable: true })
-  thumbnailUrl?: string;
-
-  @Column({ nullable: true })
-  mediumUrl?: string;
-
-  @Column({ nullable: true })
-  largeUrl?: string;
-
-  @Column({ nullable: true })
   caption?: string;
 
   @Column({ nullable: true })
@@ -41,18 +32,12 @@ export class GalleryImage {
   @Column({ nullable: true })
   photographer?: string;
 
-  @Column('simple-array', { nullable: true })
-  tags?: string[];
-
   @Column({
     type: 'enum',
     enum: GalleryCategory,
     default: GalleryCategory.OTHER
   })
   category!: GalleryCategory;
-
-  @Column({ default: 0 })
-  orderIndex!: number;
 
   @Column({ default: false })
   isPublished!: boolean;

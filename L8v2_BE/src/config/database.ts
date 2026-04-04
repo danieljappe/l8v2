@@ -3,7 +3,6 @@ import { User } from '../models/User';
 import { Artist } from '../models/Artist';
 import { Event } from '../models/Event';
 import { Venue } from '../models/Venue';
-import { Ticket } from '../models/Ticket';
 import { GalleryImage } from '../models/GalleryImage';
 import { ContactMessage } from '../models/ContactMessage';
 import { EventArtist } from '../models/EventArtist';
@@ -52,7 +51,6 @@ export const AppDataSource = new DataSource({
     Artist,
     Event,
     Venue,
-    Ticket,
     GalleryImage,
     ContactMessage,
     EventArtist

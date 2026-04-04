@@ -4,6 +4,5 @@ export * from './ArtistRepository';
 export * from './EventRepository';
 export * from './VenueRepository';
 export * from './EventArtistRepository';
-export * from './TicketRepository';
 export * from './GalleryImageRepository';
 export * from './ContactMessageRepository'; 
