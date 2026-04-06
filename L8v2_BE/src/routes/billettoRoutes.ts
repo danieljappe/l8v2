@@ -3,7 +3,14 @@ import { authenticateJWT } from '../middleware/authMiddleware';
 import { BillettoService } from '../services/BillettoService';
 
 const router = Router();
-const billettoService = new BillettoService();
+
+// Lazy singleton — only instantiated on first request, not at module load time.
+// This prevents test suites from crashing when Billetto env vars aren't set.
+let _billettoService: BillettoService | null = null;
+function getService(): BillettoService {
+  if (!_billettoService) _billettoService = new BillettoService();
+  return _billettoService;
+}
 
 /**
  * @swagger
@@ -60,7 +67,7 @@ const billettoService = new BillettoService();
 
 const listEvents: RequestHandler = async (_req, res) => {
   try {
-    const records = await billettoService.getAllRecords();
+    const records = await getService().getAllRecords();
     res.json(records);
   } catch (err: any) {
     res.status(500).json({ message: 'Failed to fetch Billetto records', error: err.message });
@@ -69,7 +76,7 @@ const listEvents: RequestHandler = async (_req, res) => {
 
 const syncAll: RequestHandler = async (_req, res) => {
   try {
-    const summary = await billettoService.syncAllEvents();
+    const summary = await getService().syncAllEvents();
     res.json({ message: 'Sync complete', ...summary });
   } catch (err: any) {
     res.status(500).json({ message: 'Sync failed', error: err.message });
@@ -78,7 +85,7 @@ const syncAll: RequestHandler = async (_req, res) => {
 
 const syncOne: RequestHandler = async (req, res) => {
   try {
-    const record = await billettoService.syncSingleEvent(req.params.billettoEventId);
+    const record = await getService().syncSingleEvent(req.params.billettoEventId);
     res.json(record);
   } catch (err: any) {
     res.status(500).json({ message: 'Single sync failed', error: err.message });
@@ -107,7 +114,7 @@ const handleWebhook: RequestHandler = async (req, res) => {
   res.status(200).json({ received: true });
 
   // Process asynchronously after responding
-  billettoService.handleWebhook(req.body).catch((err) => {
+  getService().handleWebhook(req.body).catch((err) => {
     console.error('[Billetto Webhook] Processing error:', err);
   });
 };
