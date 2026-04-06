@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Globe, Play } from 'lucide-react';
+import { Globe, Play, CalendarCheck } from 'lucide-react';
 import type { Artist } from '../../services/api';
 import { constructFullUrl } from '../../utils/imageUtils';
 
@@ -17,21 +17,6 @@ const ArtistCard: React.FC<ArtistCardProps> = ({
   variant = 'events',
   index = 0 
 }) => {
-  // Helper function to get social media count
-  const getSocialMediaCount = (artist: Artist): number => {
-    if (!artist.socialMedia) return 0;
-    if (Array.isArray(artist.socialMedia)) return artist.socialMedia.length;
-    if (typeof artist.socialMedia === 'string') {
-      try {
-        const parsed = JSON.parse(artist.socialMedia);
-        return Array.isArray(parsed) ? parsed.length : 0;
-      } catch {
-        return 0;
-      }
-    }
-    return 0;
-  };
-
   const isBookingVariant = variant === 'booking';
 
   return (
@@ -87,13 +72,11 @@ const ArtistCard: React.FC<ArtistCardProps> = ({
             )}
           </div>
           
-          {/* Social Media Count Badge (Events variant) */}
-          {!isBookingVariant && artist.socialMedia && getSocialMediaCount(artist) > 0 && (
+          {/* Bookable Icon Badge */}
+          {artist.isBookable && (
             <div className="absolute top-3 right-3">
-              <div className="bg-white/95 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1 shadow-sm border border-gray-200/50">
-                <span className="text-sm font-semibold text-gray-800">
-                  {getSocialMediaCount(artist)} social
-                </span>
+              <div className="bg-green-500/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm border border-green-400/50">
+                <CalendarCheck className="w-4 h-4 text-white" />
               </div>
             </div>
           )}
@@ -134,12 +117,6 @@ const ArtistCard: React.FC<ArtistCardProps> = ({
             </div>
           )}
 
-          {/* Click Indicator (Events variant) */}
-          {!isBookingVariant && (
-            <div className="absolute top-2 right-2 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="w-2 h-2 bg-white rounded-full" />
-            </div>
-          )}
         </div>
 
         {/* Artist Info Below Image */}
@@ -159,10 +136,10 @@ const ArtistCard: React.FC<ArtistCardProps> = ({
                 <span>Website</span>
               </div>
             )}
-            {artist.socialMedia && getSocialMediaCount(artist) > 0 && (
+            {artist.isBookable && (
               <div className="flex items-center space-x-1">
-                <span className="text-pink-400">📱</span>
-                <span>{isBookingVariant ? 'Social' : `${getSocialMediaCount(artist)} platforms`}</span>
+                <CalendarCheck className="w-3 h-3 text-green-400" />
+                <span className="text-green-400">Bookbar</span>
               </div>
             )}
           </div>

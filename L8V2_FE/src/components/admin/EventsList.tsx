@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Calendar, MapPin, Users, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, MapPin } from 'lucide-react';
 import type { Event } from '../../types/admin';
 import EventForm from './EventForm';
 import type { Artist, Venue } from '../../types/admin';
@@ -113,7 +113,7 @@ export default function EventsList({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                   Event
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -121,12 +121,6 @@ export default function EventsList({
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Venue
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Capacity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -137,26 +131,24 @@ export default function EventsList({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {events.map((event) => {
+              {[...events].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((event) => {
                 const venueObj = venues.find(v => v.id === event.venue);
                 return (
                   <tr key={event.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 w-64 max-w-xs">
                       <div className="flex items-center">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
                           <Calendar className="w-5 h-5 text-blue-600" />
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                            {event.title}
+                        <div className="ml-4 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 flex items-center gap-2 truncate">
+                            <span className="truncate">{event.title}</span>
                             {event.billettoURL && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 Tickets
                               </span>
                             )}
-                          </div>
-                          <div className="text-sm text-gray-500">{event.artist}</div>
-                          
+                          </div>                          
                           {/* Show current artists with remove buttons */}
                           {event.eventArtists && event.eventArtists.length > 0 && (
                             <div className="mt-2 space-y-1">
@@ -193,35 +185,25 @@ export default function EventsList({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Users className="w-4 h-4 text-gray-400 mr-1" />
-                        <span className="text-sm text-gray-900">{event.capacity}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <DollarSign className="w-4 h-4 text-gray-400 mr-1" />
-                        <span className="text-sm text-gray-900">${event.price}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(event.status)}`}>
                         {event.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                      <div className="flex items-center space-x-3">
                         <button
                           onClick={() => handleEdit(event)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="p-1.5 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                          title="Edit event"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(event.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="p-1.5 rounded-lg text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors"
+                          title="Delete event"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     </td>

@@ -309,8 +309,9 @@ const PinnedShowcase: React.FC = () => {
   const { data: artists } = useArtists();
 
   const eventCount         = events?.length ?? 0;
-  const artistCount        = artists?.length ?? 0;
-  const genreCount         = artists ? new Set(artists.map(a => a.genre).filter(Boolean)).size : 0;
+  const bookableArtists    = artists?.filter(a => a.isBookable) ?? [];
+  const artistCount        = bookableArtists.length;
+  const genreCount         = bookableArtists.length > 0 ? new Set(bookableArtists.map(a => a.genre).filter(Boolean)).size : 0;
   const venueCount         = events  ? new Set(events.map(e => e.venue?.id).filter(Boolean)).size : 0;
   const totalEventArtists  = events?.reduce((sum, e) => sum + (e.eventArtists?.length ?? 0), 0) ?? 0;
 
@@ -355,8 +356,6 @@ const PinnedShowcase: React.FC = () => {
   const s1p3Y = useTransform(s1Y, (v: number) => v * 2.0);
   const s2p2Y = useTransform(s2Y, (v: number) => v * 1.5);
   const s2p3Y = useTransform(s2Y, (v: number) => v * 2.0);
-  const s3p2Y = useTransform(s3Y, (v: number) => v * 1.5);
-  const s3p3Y = useTransform(s3Y, (v: number) => v * 2.0);
 
   // ── Per-slide scale — derived from opacity (0 opacity = 0.88 scale, fully visible = 1.0) ─────────
   const s1Scale = useTransform(s1Opacity, (v: number) => 0.88 + v * 0.12);
@@ -492,9 +491,7 @@ const PinnedShowcase: React.FC = () => {
                   {
                     slideOpacity: s3Opacity, slidePtr: s3Ptr, slideScale: s3Scale, slideActive: s3Active,
                     photos: [
-                      { src: 'https://l8events.dk/uploads/gallery/image-1765280815686-895715630.png', pos: { top: '6%',    left: '0%',  width: '60%' }, rotate: -7, z: 1, yMV: s3Y   },
-                      { src: 'https://l8events.dk/uploads/gallery/image-1765280815686-895715630.png', pos: { top: '0%',    right: '2%', width: '38%' }, rotate: 10, z: 2, yMV: s3p2Y },
-                      { src: 'https://l8events.dk/uploads/gallery/image-1765280815686-895715630.png', pos: { bottom: '2%', right: '4%', width: '46%' }, rotate: -4, z: 3, yMV: s3p3Y },
+                      { src: 'https://l8events.dk/uploads/gallery/image-1765280815686-895715630.png', pos: { top: '10%', left: '10%', width: '80%' }, rotate: -3, z: 1, yMV: s3Y },
                     ],
                   },
                 ] as {
@@ -548,10 +545,10 @@ const PinnedShowcase: React.FC = () => {
                 opacity: s2Opacity,
                 color: 'text-l8-beige',
                 stats: [
-                  { value: artistCount, suffix: '',  label: 'Bookbare Kunstnere' },
-                  { value: genreCount,  suffix: '',  label: 'Genrer'             },
-                  { value: eventCount,  suffix: '+', label: 'Events Booket'      },
-                  { value: 24,          suffix: 't', label: 'Svartid'            },
+                  { value: artistCount, suffix: '',   label: 'Bookbare Kunstnere' },
+                  { value: genreCount,  suffix: '',   label: 'Genrer'             },
+                  { value: eventCount,  suffix: '+',  label: 'Events Booket'      },
+                  { value: 24,          suffix: '/7', label: 'Support'            },
                 ],
               },
               {

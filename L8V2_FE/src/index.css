@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS safe area padding — keeps page gradients intact, only adds space */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Ensure fixed navbar respects safe area on notched devices */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
 /* Custom utilities for line clamping */
 .line-clamp-2 {
   display: -webkit-box;

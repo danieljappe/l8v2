@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Music, Globe } from 'lucide-react';
+import { Users, Music, Globe, CalendarCheck } from 'lucide-react';
 import type { Artist } from '../services/api';
 import { apiService } from '../services/api';
 import ArtistModal from '../components/ArtistModal';
@@ -43,29 +43,19 @@ const Artists: React.FC = () => {
     setSelectedArtist(null);
   };
 
-  // Filter artists based on search and genre
-  const filteredArtists = artists.filter(artist => {
-    const matchesSearch = artist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (artist.bio?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (artist.genre?.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesGenre = genreFilter === 'all' || artist.genre === genreFilter;
-    return matchesSearch && matchesGenre;
-  });
-
-  // Helper function to get social media count (handles both string and array formats)
-  const getSocialMediaCount = (artist: Artist): number => {
-    if (!artist.socialMedia) return 0;
-    if (Array.isArray(artist.socialMedia)) return artist.socialMedia.length;
-    if (typeof artist.socialMedia === 'string') {
-      try {
-        const parsed = JSON.parse(artist.socialMedia);
-        return Array.isArray(parsed) ? parsed.length : 0;
-      } catch {
-        return 0;
-      }
-    }
-    return 0;
-  };
+  // Filter and sort artists (bookable first)
+  const filteredArtists = artists
+    .filter(artist => {
+      const matchesSearch = artist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (artist.bio?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           (artist.genre?.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesGenre = genreFilter === 'all' || artist.genre === genreFilter;
+      return matchesSearch && matchesGenre;
+    })
+    .sort((a, b) => {
+      if (a.isBookable === b.isBookable) return 0;
+      return b.isBookable ? 1 : -1;
+    });
 
   // Get unique genres for filter
   const genres = ['all', ...Array.from(new Set(artists.map(artist => artist.genre).filter(Boolean)))];
@@ -149,6 +139,7 @@ const Artists: React.FC = () => {
                   </option>
                 ))}
               </select>
+
             </div>
             
             {/* Results Count */}
@@ -225,13 +216,11 @@ const Artists: React.FC = () => {
                       )}
                     </div>
                     
-                    {/* Social Media Count Badge */}
-                    {artist.socialMedia && getSocialMediaCount(artist) > 0 && (
+                    {/* Bookable Icon Badge */}
+                    {artist.isBookable && (
                       <div className="absolute top-3 right-3">
-                        <div className="bg-white/95 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1 shadow-sm border border-gray-200/50">
-                          <span className="text-sm font-semibold text-gray-800">
-                            {getSocialMediaCount(artist)} social
-                          </span>
+                        <div className="bg-green-500/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm border border-green-400/50">
+                          <CalendarCheck className="w-4 h-4 text-white" />
                         </div>
                       </div>
                     )}
@@ -250,10 +239,6 @@ const Artists: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Click Indicator */}
-                    <div className="absolute top-2 right-2 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="w-2 h-2 bg-white rounded-full" />
-                    </div>
                   </div>
 
                   {/* Artist Info Below Image */}
@@ -271,10 +256,10 @@ const Artists: React.FC = () => {
                           <span>Website</span>
                         </div>
                       )}
-                      {artist.socialMedia && getSocialMediaCount(artist) > 0 && (
+                      {artist.isBookable && (
                         <div className="flex items-center space-x-1">
-                          <span className="text-pink-400">📱</span>
-                          <span>{getSocialMediaCount(artist)} platforms</span>
+                          <CalendarCheck className="w-3 h-3 text-green-400" />
+                          <span className="text-green-400">Bookbar</span>
                         </div>
                       )}
                     </div>

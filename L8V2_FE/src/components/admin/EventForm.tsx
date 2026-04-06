@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import type { Event, Artist, Venue } from '../../types/admin';
 import Select from 'react-select';
@@ -148,9 +149,9 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
   // Get current artists count
   const currentArtistsCount = event?.eventArtists?.length || 0;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]" onClick={onCancel}>
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-900">
@@ -304,37 +305,6 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Capacity
-              </label>
-              <input
-                type="number"
-                name="capacity"
-                value={formData.capacity}
-                onChange={handleChange}
-                required
-                min="1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price ($)
-              </label>
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                required
-                min="0"
-                step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Status
               </label>
               <select
@@ -409,6 +379,7 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 } 

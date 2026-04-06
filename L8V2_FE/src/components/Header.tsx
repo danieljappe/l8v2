@@ -97,7 +97,7 @@ const Header: React.FC = () => {
       <StructuredData data={navigationSchema} />
       <StructuredData data={websiteSchema} />
       <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 safe-area-top ${
         isScrolled ? 'bg-black/80 backdrop-blur-lg' : 'bg-transparent'
       }`}
     >
@@ -106,21 +106,17 @@ const Header: React.FC = () => {
           {/* Logo and Platform Switch */}
           <div className="flex items-center space-x-3">
             {/* Platform Switch Icon */}
-            <button
+            <motion.button
               onClick={handlePlatformSwitch}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-300 text-white/80 hover:text-white"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl transition-colors duration-200 text-white/80 hover:text-white"
               title={`Switch to ${getPlatformFromPath() === 'booking' ? 'Events' : 'Booking'}`}
             >
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-5 h-5"
-              >
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-              </motion.div>
-            </button>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </motion.button>
 
             <Link to={getPlatformFromPath() === 'booking' ? '/booking' : '/'}>
               <div className="flex items-center space-x-2">
@@ -253,18 +249,19 @@ const Header: React.FC = () => {
                     {/* Platform Switch Button */}
                     <div className="border-t border-white/20 pt-4">
                       <motion.button
-                        whileHover={{ x: 5 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
                         onClick={() => {
                           handlePlatformSwitch();
                           setIsMobileMenuOpen(false);
                         }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 text-white/60 hover:text-white hover:bg-white/5"
+                        className="w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 text-white/60 hover:text-white hover:bg-white/5"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
                         <span className="text-base">
-                          Switch to {getPlatformFromPath() === 'booking' ? 'Events' : 'Booking'}
+                          Skift til {getPlatformFromPath() === 'booking' ? 'Events' : 'Booking'}
                         </span>
                       </motion.button>
                     </div>
