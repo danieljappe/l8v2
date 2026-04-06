@@ -6,12 +6,12 @@ export class BillettoEventData {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ unique: true })
-  eventId!: string;
+  @Column({ unique: true, nullable: true })
+  eventId!: string | null;
 
-  @OneToOne(() => Event, { onDelete: 'CASCADE' })
+  @OneToOne(() => Event, event => event.billettoData, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'eventId' })
-  event!: Event;
+  event!: Event | null;
 
   @Column({ unique: true })
   billettoEventId!: string;

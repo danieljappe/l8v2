@@ -9,6 +9,7 @@ import { useEvent } from '../hooks/useApi';
 import type { Artist } from '../services/api';
 import { constructFullUrl } from '../utils/imageUtils';
 import VenueMapEmbed from '../components/VenueMapEmbed';
+import { getAvailabilityStatus } from '../utils/ticketAvailability';
 
 const EventDetails: React.FC = () => {
   const { eventName } = useParams();
@@ -333,19 +334,52 @@ const EventDetails: React.FC = () => {
                   >
                     <div className="mb-6">
                       <h3 className="text-2xl font-semibold text-white mb-2">Event Billet</h3>
+
+                      {/* Ticket availability indicator */}
+                      {(() => {
+                        const avail = getAvailabilityStatus(event.billettoData);
+                        const { ticketsAvailable, maxCapacity } = event.billettoData ?? {};
+                        if (avail === 'sold_out') return (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-500/20 text-red-300 border border-red-400/30">
+                            Udsolgt
+                          </span>
+                        );
+                        if (avail === 'low' && ticketsAvailable != null) return (
+                          <div className="space-y-2">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                              Få billetter tilbage — {ticketsAvailable} tilbage
+                            </span>
+                            {maxCapacity && (
+                              <div className="w-full bg-white/10 rounded-full h-2">
+                                <div
+                                  className="bg-amber-400 h-2 rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.round((ticketsAvailable / maxCapacity) * 100)}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                        return null;
+                      })()}
                     </div>
-                    
-                    <motion.a
-                      href={billettoLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="inline-block w-full bg-gradient-to-r from-l8-blue to-l8-blue-light hover:from-l8-blue-dark hover:to-l8-blue text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
-                    >
-                      Køb Billet på Billetto
-                    </motion.a>
-                    
+
+                    {getAvailabilityStatus(event.billettoData) === 'sold_out' ? (
+                      <div className="w-full bg-white/10 text-white/40 font-semibold py-4 px-6 rounded-xl text-center">
+                        Udsolgt
+                      </div>
+                    ) : (
+                      <motion.a
+                        href={billettoLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="inline-block w-full bg-gradient-to-r from-l8-blue to-l8-blue-light hover:from-l8-blue-dark hover:to-l8-blue text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
+                      >
+                        Køb Billet på Billetto
+                      </motion.a>
+                    )}
+
                     <p className="text-white/60 text-sm mt-4">
                       Du vil blive omdirigeret til Billetto for at gennemføre købet
                     </p>

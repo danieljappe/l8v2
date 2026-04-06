@@ -7,6 +7,7 @@ import LoadingSpinner from './LoadingSpinner';
 import { useEvents, useArtists } from '../hooks/useApi';
 import type { Artist } from '../services/api';
 import { slugify } from '../utils/slugUtils';
+import { getAvailabilityStatus } from '../utils/ticketAvailability';
 
 const UpcomingEvent: React.FC = () => {
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
@@ -232,14 +233,33 @@ const UpcomingEvent: React.FC = () => {
 
             {/* CTA Button */}
             <motion.div variants={itemVariants} className="text-center">
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-gradient-to-r from-l8-blue to-l8-blue-light hover:from-l8-blue-dark hover:to-l8-blue text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 mx-auto text-sm sm:text-base"
-              >
-                <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Book Billetter</span>
-              </motion.button>
+              {(() => {
+                const avail = getAvailabilityStatus(upcomingEvent.billettoData);
+                if (avail === 'sold_out') return (
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-red-500/20 text-red-300 border border-red-400/30">
+                      Udsolgt
+                    </span>
+                  </div>
+                );
+                return (
+                  <div className="flex flex-col items-center gap-3">
+                    {avail === 'low' && (
+                      <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                        Få billetter tilbage{upcomingEvent.billettoData?.ticketsAvailable != null ? ` — ${upcomingEvent.billettoData.ticketsAvailable} tilbage` : ''}
+                      </span>
+                    )}
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="bg-gradient-to-r from-l8-blue to-l8-blue-light hover:from-l8-blue-dark hover:to-l8-blue text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 mx-auto text-sm sm:text-base"
+                    >
+                      <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span>Book Billetter</span>
+                    </motion.button>
+                  </div>
+                );
+              })()}
             </motion.div>
           </motion.div>
         </motion.div>

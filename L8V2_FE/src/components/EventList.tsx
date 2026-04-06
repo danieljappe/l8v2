@@ -7,6 +7,7 @@ import { useEvents } from '../hooks/useApi';
 import type { Event } from '../services/api';
 import { constructFullUrl } from '../utils/imageUtils';
 import { slugify } from '../utils/slugUtils';
+import { getAvailabilityStatus } from '../utils/ticketAvailability';
 
 interface ProcessedEvent extends Event {
   status: 'upcoming' | 'past';
@@ -346,15 +347,42 @@ const EventList: React.FC = () => {
                 {event.description}
               </p>
 
+              {/* Ticket Availability Badge - upcoming events only */}
+              {event.status === 'upcoming' && (() => {
+                const avail = getAvailabilityStatus(event.billettoData);
+                if (avail === 'sold_out') return (
+                  <div className="mb-4 flex items-center justify-center">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300 border border-red-400/30">
+                      Udsolgt
+                    </span>
+                  </div>
+                );
+                if (avail === 'low') return (
+                  <div className="mb-4 flex items-center justify-center">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                      Få billetter tilbage{event.billettoData?.ticketsAvailable != null ? ` — ${event.billettoData.ticketsAvailable} tilbage` : ''}
+                    </span>
+                  </div>
+                );
+                return null;
+              })()}
+
               {/* CTA Button - now just for style, not navigation */}
               <div className="text-center">
-                <button
-                  className="bg-gradient-to-r from-l8-blue to-l8-blue-light hover:from-l8-blue-dark hover:to-l8-blue text-white font-semibold px-4 py-2 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 w-full text-sm pointer-events-none"
-                  tabIndex={-1}
-                >
-                  <Ticket className="w-4 h-4" />
-                  <span>{event.status === 'upcoming' ? 'Se Detaljer' : 'Se Opsummering'}</span>
-                </button>
+                {event.status === 'upcoming' && getAvailabilityStatus(event.billettoData) === 'sold_out' ? (
+                  <div className="bg-white/10 text-white/40 font-semibold px-4 py-2 rounded-xl flex items-center justify-center space-x-2 w-full text-sm cursor-not-allowed">
+                    <Ticket className="w-4 h-4" />
+                    <span>Udsolgt</span>
+                  </div>
+                ) : (
+                  <button
+                    className="bg-gradient-to-r from-l8-blue to-l8-blue-light hover:from-l8-blue-dark hover:to-l8-blue text-white font-semibold px-4 py-2 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 w-full text-sm pointer-events-none"
+                    tabIndex={-1}
+                  >
+                    <Ticket className="w-4 h-4" />
+                    <span>{event.status === 'upcoming' ? 'Se Detaljer' : 'Se Opsummering'}</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}

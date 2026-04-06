@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Venue } from './Venue';
 import { EventArtist } from './EventArtist';
 import { GalleryImage } from './GalleryImage';
+import { BillettoEventData } from './BillettoEventData';
 
 @Entity()
 export class Event {
@@ -50,6 +51,9 @@ export class Event {
 
   @OneToMany(() => GalleryImage, galleryImage => galleryImage.event)
   galleryImages!: GalleryImage[];
+
+  @OneToOne(() => BillettoEventData, billettoData => billettoData.event)
+  billettoData?: BillettoEventData;
 
   @CreateDateColumn()
   createdAt!: Date;

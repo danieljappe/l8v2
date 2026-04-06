@@ -229,6 +229,7 @@ jobs:
             cd /var/www/l8v2/L8v2_BE
             npm ci
             npm run build
+            npm run migration:run
 
             # Frontend
             cd /var/www/l8v2/L8V2_FE

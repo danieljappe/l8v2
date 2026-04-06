@@ -99,7 +99,7 @@ interface EventParams {
 const getAllEvents: RequestHandler = async (_req, res) => {
   try {
     const events = await eventRepository.find({
-      relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages']
+      relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData']
     });
     res.json(events);
   } catch (error) {
@@ -125,7 +125,7 @@ const getEventById: RequestHandler = async (req, res) => {
     if (identifier.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
       event = await eventRepository.findOne({
         where: { id: identifier },
-        relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages']
+        relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData']
       });
     }
 
@@ -133,7 +133,7 @@ const getEventById: RequestHandler = async (req, res) => {
     if (!event) {
       // Get all events to match by slugified title
       const allEvents = await eventRepository.find({
-        relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages']
+        relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData']
       });
       
       // Find event where slugified title matches the identifier
@@ -187,7 +187,7 @@ const updateEvent: RequestHandler = async (req, res) => {
     // Refetch the event with relations to ensure all data is populated
     const updatedEvent = await eventRepository.findOne({
       where: { id: req.params.id },
-      relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages']
+      relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData']
     });
     
     res.json(updatedEvent);

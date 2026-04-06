@@ -6,6 +6,8 @@ import { Venue } from '../models/Venue';
 import { GalleryImage } from '../models/GalleryImage';
 import { ContactMessage } from '../models/ContactMessage';
 import { EventArtist } from '../models/EventArtist';
+import { AuditLog } from '../models/AuditLog';
+import { BillettoEventData } from '../models/BillettoEventData';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
@@ -53,7 +55,9 @@ export const AppDataSource = new DataSource({
     Venue,
     GalleryImage,
     ContactMessage,
-    EventArtist
+    EventArtist,
+    AuditLog,
+    BillettoEventData
   ],
   migrations: [
     isProduction 

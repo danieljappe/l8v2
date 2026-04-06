@@ -238,6 +238,11 @@ export interface Event {
   venue?: Venue;
   eventArtists: EventArtist[];
   galleryImages?: GalleryImage[];
+  billettoData?: {
+    maxCapacity: number | null;
+    ticketsAvailable: number | null;
+    lastSyncedAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
