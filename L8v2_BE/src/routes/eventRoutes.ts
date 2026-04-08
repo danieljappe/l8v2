@@ -105,7 +105,7 @@ const getAllEvents: RequestHandler = async (req, res) => {
   try {
     const { upcoming, past, limit } = req.query;
     const take = limit ? parseInt(limit as string, 10) : undefined;
-    const relations = ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData'] as const;
+    const relations = ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData'];
 
     if (upcoming === 'true') {
       const events = await eventRepository.find({
