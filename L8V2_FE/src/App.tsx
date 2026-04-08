@@ -7,6 +7,7 @@ import AboutUs from './pages/AboutUs';
 import Contact from './pages/Contact';
 import Artists from './pages/Artists';
 import BookingHome from './pages/BookingHome';
+import BookingAbout from './pages/BookingAbout';
 import BookingArtists from './pages/BookingArtists';
 import ArtistPage from './pages/ArtistPage';
 import Admin from './pages/Admin';
@@ -64,6 +65,7 @@ const AppContent = () => {
             <Route path="/booking" element={<BookingHome />} />
             <Route path="/booking/artists" element={<BookingArtists />} />
             <Route path="/booking/artists/:artistName" element={<ArtistPage />} />
+            <Route path="/booking/about" element={<BookingAbout />} />
             <Route path="/booking/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<PrivateRoute><Admin /></PrivateRoute>} />
