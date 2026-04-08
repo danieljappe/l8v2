@@ -3,6 +3,7 @@ import { AppDataSource } from '../config/database';
 import { Event } from '../models/Event';
 import { authenticateJWT } from '../middleware/authMiddleware';
 import { slugify } from '../utils/slugUtils';
+import { MoreThanOrEqual, LessThan } from 'typeorm';
 
 const router = Router();
 const eventRepository = AppDataSource.getRepository(Event);
@@ -96,11 +97,39 @@ interface EventParams {
  */
 
 // Get all events
-const getAllEvents: RequestHandler = async (_req, res) => {
+// Optional query params:
+//   ?upcoming=true          — only events where date >= now, ordered ASC, uses IDX_event_date_status
+//   ?past=true              — only events where date < now, ordered DESC, uses IDX_event_date_status
+//   ?limit=N                — max rows returned (intended for use with upcoming/past)
+const getAllEvents: RequestHandler = async (req, res) => {
   try {
-    const events = await eventRepository.find({
-      relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData']
-    });
+    const { upcoming, past, limit } = req.query;
+    const take = limit ? parseInt(limit as string, 10) : undefined;
+    const relations = ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData'] as const;
+
+    if (upcoming === 'true') {
+      const events = await eventRepository.find({
+        where: { date: MoreThanOrEqual(new Date()) },
+        relations,
+        order: { date: 'ASC' },
+        take
+      });
+      res.json(events);
+      return;
+    }
+
+    if (past === 'true') {
+      const events = await eventRepository.find({
+        where: { date: LessThan(new Date()) },
+        relations,
+        order: { date: 'DESC' },
+        take
+      });
+      res.json(events);
+      return;
+    }
+
+    const events = await eventRepository.find({ relations });
     res.json(events);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching events' });

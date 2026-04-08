@@ -29,8 +29,8 @@ const Breadcrumbs: React.FC = () => {
     }
   }
   
-  // Fetch all artists to find the matching one
-  const { data: artists, loading: artistsLoading } = useArtists();
+  // Only fetch artists when actually on an artist page
+  const { data: artists, loading: artistsLoading } = useArtists({ enabled: !!isArtistPage });
   
   // Find the artist by matching the slug
   const artist = React.useMemo(() => {

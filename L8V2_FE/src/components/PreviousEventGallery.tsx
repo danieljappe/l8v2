@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Play, Share2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
-import { useGalleryImages, useEvents } from '../hooks/useApi';
+import { usePastEvents, useGalleryImagesByEvent } from '../hooks/useApi';
 import { constructFullUrl } from '../utils/imageUtils';
 import type { GalleryImage } from '../services/api';
 import { slugify } from '../utils/slugUtils';
@@ -13,9 +13,9 @@ const PreviousEventGallery: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
-  // Fetch gallery images and events from API
-  const { data: galleryImages, loading: galleryLoading, error: galleryError } = useGalleryImages();
-  const { data: events, loading: eventsLoading, error: eventsError } = useEvents();
+  const { data: pastEvents, loading: eventsLoading, error: eventsError } = usePastEvents(1);
+  const recentPastEvent = pastEvents?.[0] ?? null;
+  const { data: eventGalleryImages, loading: galleryLoading, error: galleryError } = useGalleryImagesByEvent(recentPastEvent?.id, 4);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -41,30 +41,8 @@ const PreviousEventGallery: React.FC = () => {
     }
   };
 
-  // Get the most recent past event
-  const recentPastEvent = events
-    ?.filter(event => {
-      const eventDate = new Date(event.date);
-      const today = new Date();
-      // Set time to midnight for both dates to compare only the date part
-      eventDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-      return eventDate < today;
-    })
-    .sort((a, b) => {
-      // Sort by date descending (most recent first)
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    })[0]; // Get the first (most recent) past event
-
-  // Get gallery images for the recent event (or use all if no specific event)
-  const eventGalleryImages = galleryImages?.filter(img => 
-    !recentPastEvent || img.eventId === recentPastEvent.id
-  ) ?? [];
-
-  // Use actual gallery images, sorted by orderIndex
-  const displayImages = eventGalleryImages
-    .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
-    .slice(0, 4); // Show only the first 4 images
+  // Images arrive pre-filtered and pre-ordered from the API (ORDER BY createdAt ASC LIMIT 4)
+  const displayImages = eventGalleryImages ?? [];
 
   // Modal handlers
   const handleImageClick = (image: GalleryImage, index: number) => {

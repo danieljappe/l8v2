@@ -4,7 +4,7 @@ import { Calendar, MapPin, Clock, Music, Ticket } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ArtistModal from './ArtistModal';
 import LoadingSpinner from './LoadingSpinner';
-import { useEvents, useArtists } from '../hooks/useApi';
+import { useUpcomingEvents } from '../hooks/useApi';
 import type { Artist } from '../services/api';
 import { slugify } from '../utils/slugUtils';
 import { getAvailabilityStatus } from '../utils/ticketAvailability';
@@ -13,9 +13,10 @@ const UpcomingEvent: React.FC = () => {
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
   const navigate = useNavigate();
 
-  // Fetch events and artists from API
-  const { data: events, loading: eventsLoading, error: eventsError } = useEvents();
-  const { data: _artists, loading: artistsLoading, error: artistsError } = useArtists();
+  const { data: upcomingEvents, loading: eventsLoading, error: eventsError } = useUpcomingEvents(1);
+  const artistsLoading = false;
+  const artistsError = null;
+  const events = upcomingEvents ?? [];
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -41,12 +42,7 @@ const UpcomingEvent: React.FC = () => {
     }
   };
 
-  // Get the next upcoming event
-  const upcomingEvent = events?.find(event => {
-    const eventDate = new Date(event.date);
-    const today = new Date();
-    return eventDate >= today;
-  });
+  const upcomingEvent = events[0] ?? null;
 
   // Get artists for the upcoming event
   const eventArtists = upcomingEvent?.eventArtists?.map(ea => ea.artist) ?? [];

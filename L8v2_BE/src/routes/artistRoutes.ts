@@ -102,8 +102,22 @@ interface ArtistParams {
  */
 
 // Get all artists
-const getAllArtists: RequestHandler = async (_req, res) => {
+// Optional query params:
+//   ?bookable=true   — only artists where isBookable = true,
+//                      uses IDX_artist_isBookable partial index
+const getAllArtists: RequestHandler = async (req, res) => {
   try {
+    const { bookable } = req.query;
+
+    if (bookable === 'true') {
+      const artists = await artistRepository.find({
+        where: { isBookable: true },
+        relations: ['bookingUser']
+      });
+      res.json(artists);
+      return;
+    }
+
     const artists = await artistRepository.find({
       relations: ['bookingUser']
     });

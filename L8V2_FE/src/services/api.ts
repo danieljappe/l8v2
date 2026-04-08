@@ -313,6 +313,7 @@ export interface User {
 export const apiService = {
   // Artists
   getArtists: () => apiClient.get<Artist[]>('/artists'),
+  getBookableArtists: () => apiClient.get<Artist[]>('/artists?bookable=true'),
   getArtist: (id: string) => apiClient.get<Artist>(`/artists/${id}`),
   createArtist: (artist: Partial<Artist>) => apiClient.post<Artist>('/artists', artist),
   updateArtist: (id: string, artist: Partial<Artist>) => apiClient.put<Artist>(`/artists/${id}`, artist),
@@ -325,6 +326,8 @@ export const apiService = {
 
   // Events
   getEvents: () => apiClient.get<Event[]>('/events'),
+  getUpcomingEvents: (limit?: number) => apiClient.get<Event[]>(`/events?upcoming=true${limit ? `&limit=${limit}` : ''}`),
+  getPastEvents: (limit?: number) => apiClient.get<Event[]>(`/events?past=true${limit ? `&limit=${limit}` : ''}`),
   getEvent: (nameOrId: string) => apiClient.get<Event>(`/events/${nameOrId}`),
   createEvent: (event: Partial<Event>) => apiClient.post<Event>('/events', event),
   updateEvent: (id: string, event: Partial<Event>) => apiClient.put<Event>(`/events/${id}`, event),
@@ -338,10 +341,9 @@ export const apiService = {
   deleteVenue: (id: string) => apiClient.delete<null>(`/venues/${id}`),
 
   // Gallery
-  getGalleryImages: () => {
-    const result = apiClient.get<GalleryImage[]>('/gallery');
-    return result;
-  },
+  getGalleryImages: () => apiClient.get<GalleryImage[]>('/gallery'),
+  getGalleryImagesByEvent: (eventId: string, limit?: number) =>
+    apiClient.get<GalleryImage[]>(`/gallery?eventId=${encodeURIComponent(eventId)}${limit ? `&limit=${limit}` : ''}`),
   getGalleryImage: (id: string) => apiClient.get<GalleryImage>(`/gallery/${id}`),
   createGalleryImage: (image: Partial<GalleryImage>) => apiClient.post<GalleryImage>('/gallery', image),
   updateGalleryImage: (id: string, image: Partial<GalleryImage>) => apiClient.put<GalleryImage>(`/gallery/${id}`, image),
@@ -364,6 +366,15 @@ export const apiService = {
     apiClient.post<User>('/users', user),
   deleteUser: (id: string) => apiClient.delete<{ message: string }>(`/users/${id}`),
 
+
+  // Stats
+  getStats: () => apiClient.get<{
+    eventCount: number;
+    venueCount: number;
+    bookableArtistCount: number;
+    genreCount: number;
+    totalEventArtists: number;
+  }>('/stats'),
 
   // Event Artists
   getEventArtists: () => apiClient.get<EventArtist[]>('/event-artists'),

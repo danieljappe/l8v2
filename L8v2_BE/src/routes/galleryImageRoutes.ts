@@ -178,8 +178,25 @@ const validateEventId = async (eventId?: string): Promise<boolean> => {
  */
 
 // Get all gallery images
-const getAllGalleryImages: RequestHandler = async (_req, res) => {
+// Optional query params:
+//   ?eventId=<uuid>   — only images for that event, ordered by createdAt ASC,
+//                       uses IDX_gallery_image_eventId_createdAt
+//   ?limit=N          — max rows returned (intended for use with eventId)
+const getAllGalleryImages: RequestHandler = async (req, res) => {
   try {
+    const { eventId, limit } = req.query;
+    const take = limit ? parseInt(limit as string, 10) : undefined;
+
+    if (eventId && typeof eventId === 'string') {
+      const images = await galleryImageRepository.find({
+        where: { eventId },
+        order: { createdAt: 'ASC' },
+        take
+      });
+      res.json(images);
+      return;
+    }
+
     const galleryImages = await galleryImageRepository.find();
     res.json(galleryImages);
   } catch (error) {

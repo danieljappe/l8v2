@@ -2,10 +2,8 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Users, Heart, Rocket, Star, ArrowRight, Linkedin, Github, Mail, Phone, AlertCircle, RefreshCw } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useEvents, useApi } from '../hooks/useApi';
+import { useEvents, useUsers } from '../hooks/useApi';
 import { useSEO } from '../hooks/useSEO';
-import type { User } from '../services/api';
-import { apiService } from '../services/api';
 
 const useCountAnimation = (end: number, duration = 2) => {
   const count = useMotionValue(0);
@@ -24,7 +22,7 @@ const useCountAnimation = (end: number, duration = 2) => {
 
 const AboutUs = () => {
   const { data: events, loading: eventsLoading } = useEvents();
-  const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useApi<User[]>(() => apiService.getUsers());
+  const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useUsers();
   const [eventCount, setEventCount] = useState(0);
 
   // SEO optimization

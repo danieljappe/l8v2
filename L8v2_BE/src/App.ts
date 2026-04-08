@@ -19,6 +19,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import authRoutes from './routes/authRoutes';
 import billettoRoutes from './routes/billettoRoutes';
+import statsRoutes from './routes/statsRoutes';
 import path from 'path';
 
 dotenv.config();
@@ -118,6 +119,7 @@ export function createApp(): Express {
   app.use('/api/contact', contactMessageRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/billetto', billettoRoutes);
+  app.use('/api/stats', statsRoutes);
 
   // Swagger setup
   const swaggerOptions = {

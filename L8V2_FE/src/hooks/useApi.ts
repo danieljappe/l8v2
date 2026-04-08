@@ -1,188 +1,196 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiService } from '../services/api';
+import { useQuery, useMutation as useTanstackMutation } from '@tanstack/react-query';
+import { apiService, type GalleryImage } from '../services/api';
 
-interface UseApiState<T> {
-  data: T | null;
-  loading: boolean;
-  error: string | null;
-}
+// ─── Query key factory ────────────────────────────────────────────────────────
+// Centralised so cache invalidation is consistent across the app.
+export const queryKeys = {
+  events:              ['events']                                         as const,
+  eventsUpcoming:      (limit?: number) => ['events', 'upcoming', limit] as const,
+  eventsPast:          (limit?: number) => ['events', 'past', limit]     as const,
+  event:               (id: string)     => ['events', id]                as const,
+  artists:             ['artists']                                        as const,
+  artistsBookable:     ['artists', 'bookable']                           as const,
+  artist:              (id: string)     => ['artists', id]               as const,
+  venues:              ['venues']                                         as const,
+  venue:               (id: string)     => ['venues', id]                as const,
+  gallery:             ['gallery']                                        as const,
+  galleryByEvent:      (eventId: string, limit?: number) => ['gallery', 'byEvent', eventId, limit] as const,
+  galleryImage:        (id: string)     => ['gallery', id]               as const,
+  contactMessages:     ['contact']                                        as const,
+  eventArtists:        ['event-artists']                                  as const,
+};
 
-interface UseApiReturn<T> extends UseApiState<T> {
-  refetch: () => Promise<void>;
-  setData: (data: T) => void;
-}
-
-// Hook for fetching data
-export function useApi<T>(
-  apiCall: () => Promise<{ data?: T; error?: string }>,
-  dependencies: React.DependencyList = []
-): UseApiReturn<T> {
-  const [state, setState] = useState<UseApiState<T>>({
-    data: null,
-    loading: true,
-    error: null,
-  });
-
-  const fetchData = useCallback(async (retryCount = 0) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      const result = await apiCall();
-      
-      if (result.error) {
-        console.error('API Error:', result.error);
-        setState({
-          data: null,
-          loading: false,
-          error: result.error,
-        });
-      } else if (result.data !== undefined) {
-        // Handle both null and actual data (including empty arrays)
-        setState({
-          data: result.data,
-          loading: false,
-          error: null,
-        });
-      } else {
-        // If neither error nor data is returned, treat as error
-        console.error('API returned neither data nor error');
-        setState({
-          data: null,
-          loading: false,
-          error: 'API returned an unexpected response',
-        });
-      }
-    } catch (error) {
-      console.error('API Request Failed:', error);
-      
-      // Retry logic for network errors
-      if (retryCount < 2 && error instanceof Error && 
-          (error.message.includes('fetch') || error.message.includes('network'))) {
-        setTimeout(() => fetchData(retryCount + 1), 1000 * (retryCount + 1));
-        return;
-      }
-      
-      setState({
-        data: null,
-        loading: false,
-        error: error instanceof Error ? error.message : 'An error occurred',
-      });
-    }
-  }, [apiCall]);
-
-  const setData = useCallback((data: T) => {
-    setState(prev => ({ ...prev, data }));
-  }, []);
-
-  useEffect(() => {
-    void fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, dependencies);
-
+// ─── Shared adapter ───────────────────────────────────────────────────────────
+// Maps TanStack Query's shape to the { data, loading, error } the app uses.
+function adapt<T>(query: ReturnType<typeof useQuery<T>>) {
   return {
-    ...state,
-    refetch: fetchData,
-    setData,
+    data:    query.data ?? null,
+    loading: query.isPending,
+    error:   query.error ? (query.error as Error).message : null,
+    refetch: query.refetch,
   };
 }
 
-// Specific hooks for different data types
+// ─── Event hooks ──────────────────────────────────────────────────────────────
+
 export function useEvents() {
-  return useApi(() => apiService.getEvents());
+  return adapt(useQuery({
+    queryKey: queryKeys.events,
+    queryFn:  () => apiService.getEvents().then(r => r.data ?? []),
+  }));
+}
+
+export function useUpcomingEvents(limit?: number) {
+  return adapt(useQuery({
+    queryKey: queryKeys.eventsUpcoming(limit),
+    queryFn:  () => apiService.getUpcomingEvents(limit).then(r => r.data ?? []),
+  }));
+}
+
+export function usePastEvents(limit?: number) {
+  return adapt(useQuery({
+    queryKey: queryKeys.eventsPast(limit),
+    queryFn:  () => apiService.getPastEvents(limit).then(r => r.data ?? []),
+  }));
 }
 
 export function useEvent(nameOrId: string) {
-  return useApi(() => {
-    // Don't make API call if name/id is invalid
-    if (!nameOrId || typeof nameOrId !== 'string' || nameOrId.trim() === '') {
-      return Promise.resolve({ error: 'Invalid event name or ID' });
-    }
-    return apiService.getEvent(nameOrId);
-  }, [nameOrId]);
+  return adapt(useQuery({
+    queryKey: queryKeys.event(nameOrId),
+    queryFn:  () => apiService.getEvent(nameOrId).then(r => r.data ?? null),
+    enabled:  Boolean(nameOrId?.trim()),
+  }));
 }
 
-export function useArtists() {
-  return useApi(() => apiService.getArtists());
+// ─── Artist hooks ─────────────────────────────────────────────────────────────
+
+export function useArtists(options?: { enabled?: boolean }) {
+  return adapt(useQuery({
+    queryKey: queryKeys.artists,
+    queryFn:  () => apiService.getArtists().then(r => r.data ?? []),
+    enabled:  options?.enabled ?? true,
+  }));
+}
+
+export function useBookableArtists() {
+  return adapt(useQuery({
+    queryKey: queryKeys.artistsBookable,
+    queryFn:  () => apiService.getBookableArtists().then(r => r.data ?? []),
+  }));
 }
 
 export function useArtist(id: string) {
-  return useApi(() => apiService.getArtist(id), [id]);
+  return adapt(useQuery({
+    queryKey: queryKeys.artist(id),
+    queryFn:  () => apiService.getArtist(id).then(r => r.data ?? null),
+    enabled:  Boolean(id),
+  }));
 }
 
+// ─── Venue hooks ──────────────────────────────────────────────────────────────
+
 export function useVenues() {
-  return useApi(() => apiService.getVenues());
+  return adapt(useQuery({
+    queryKey: queryKeys.venues,
+    queryFn:  () => apiService.getVenues().then(r => r.data ?? []),
+  }));
 }
 
 export function useVenue(id: string) {
-  return useApi(() => apiService.getVenue(id), [id]);
+  return adapt(useQuery({
+    queryKey: queryKeys.venue(id),
+    queryFn:  () => apiService.getVenue(id).then(r => r.data ?? null),
+    enabled:  Boolean(id),
+  }));
 }
 
+// ─── Gallery hooks ────────────────────────────────────────────────────────────
+
 export function useGalleryImages() {
-  return useApi(() => apiService.getGalleryImages());
+  return adapt(useQuery({
+    queryKey: queryKeys.gallery,
+    queryFn:  () => apiService.getGalleryImages().then(r => r.data ?? []),
+  }));
+}
+
+// Dependent query — only fires when eventId is known.
+// TanStack Query's `enabled` flag is cleaner than a Promise.resolve([]) workaround.
+export function useGalleryImagesByEvent(eventId: string | undefined, limit?: number) {
+  const query = useQuery<GalleryImage[]>({
+    queryKey: queryKeys.galleryByEvent(eventId!, limit),
+    queryFn:  () => apiService.getGalleryImagesByEvent(eventId!, limit).then(r => r.data ?? []),
+    enabled:  Boolean(eventId),
+  });
+  return adapt(query);
 }
 
 export function useGalleryImage(id: string) {
-  return useApi(() => apiService.getGalleryImage(id), [id]);
+  return adapt(useQuery({
+    queryKey: queryKeys.galleryImage(id),
+    queryFn:  () => apiService.getGalleryImage(id).then(r => r.data ?? null),
+    enabled:  Boolean(id),
+  }));
 }
 
+// ─── Stats hook ───────────────────────────────────────────────────────────────
+
+export function useStats() {
+  return adapt(useQuery({
+    queryKey: ['stats'],
+    queryFn:  () => apiService.getStats().then(r => r.data ?? null),
+    staleTime: 30 * 60 * 1000, // stats rarely change — cache for 30 minutes
+  }));
+}
+
+// ─── User hooks ───────────────────────────────────────────────────────────────
+
+export function useUsers() {
+  return adapt(useQuery({
+    queryKey: ['users'],
+    queryFn:  () => apiService.getUsers().then(r => r.data ?? []),
+  }));
+}
+
+// ─── Other hooks ──────────────────────────────────────────────────────────────
 
 export function useEventArtists() {
-  return useApi(() => apiService.getEventArtists());
+  return adapt(useQuery({
+    queryKey: queryKeys.eventArtists,
+    queryFn:  () => apiService.getEventArtists().then(r => r.data ?? []),
+  }));
 }
 
-// Hook for mutations (POST, PUT, DELETE)
+// ─── Mutation hook ────────────────────────────────────────────────────────────
+// Kept separate — mutations are not cached and don't need query keys.
+
 export function useMutation<T, R>(
   mutationFn: (data: T) => Promise<{ data?: R; error?: string }>
 ) {
-  const [state, setState] = useState<{
-    loading: boolean;
-    error: string | null;
-    data: R | null;
-  }>({
-    loading: false,
-    error: null,
-    data: null,
+  const mutation = useTanstackMutation({
+    mutationFn: async (data: T) => {
+      const result = await mutationFn(data);
+      if (result.error) throw new Error(result.error);
+      return result.data as R;
+    }
   });
 
-  const mutate = useCallback(async (data: T) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      const result = await mutationFn(data);
-      
-      if (result.error) {
-        setState({
-          loading: false,
-          error: result.error,
-          data: null,
-        });
-        return { error: result.error };
-      } else if (result.data) {
-        setState({
-          loading: false,
-          error: null,
-          data: result.data,
-        });
-        return { data: result.data };
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
-      setState({
-        loading: false,
-        error: errorMessage,
-        data: null,
-      });
-      return { error: errorMessage };
-    }
-  }, [mutationFn]);
-
   return {
-    ...state,
-    mutate,
+    loading: mutation.isPending,
+    error:   mutation.error ? (mutation.error as Error).message : null,
+    data:    mutation.data ?? null,
+    mutate:  async (data: T) => {
+      try {
+        const result = await mutation.mutateAsync(data);
+        return { data: result };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
   };
 }
 
-// Specific mutation hooks
+// ─── Specific mutation hooks ──────────────────────────────────────────────────
+
 export function useCreateContactMessage() {
   return useMutation(apiService.createContactMessage);
 }
@@ -199,11 +207,10 @@ export function useCreateVenue() {
   return useMutation(apiService.createVenue);
 }
 
-
 export function useCreateGalleryImage() {
   return useMutation(apiService.createGalleryImage);
 }
 
 export function useCreateEventArtist() {
   return useMutation(apiService.createEventArtist);
-} 
+}

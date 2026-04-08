@@ -17,7 +17,7 @@ import PreviousEventGallery from '../components/PreviousEventGallery';
 import SocialMediaSection from '../components/SocialMediaSection';
 import { useSEO } from '../hooks/useSEO';
 import { StructuredData, createOrganizationSchema, createWebSiteSchema } from '../components/StructuredData';
-import { useEvents, useArtists } from '../hooks/useApi';
+import { useStats, useUpcomingEvents } from '../hooks/useApi';
 
 // ─── Scroll-triggered fade-up wrapper ────────────────────────────────────────
 const FadeUp: React.FC<{ children: React.ReactNode; delay?: number; className?: string }> = ({
@@ -305,15 +305,13 @@ const HeroEventWidget: React.FC<{ event: Event; scrollOpacity: MotionValue<numbe
 const PinnedShowcase: React.FC = () => {
   const navigate = useNavigate();
   const sectionRef = useRef<HTMLDivElement>(null);
-  const { data: events } = useEvents();
-  const { data: artists } = useArtists();
+  const { data: stats } = useStats();
 
-  const eventCount         = events?.length ?? 0;
-  const bookableArtists    = artists?.filter(a => a.isBookable) ?? [];
-  const artistCount        = bookableArtists.length;
-  const genreCount         = bookableArtists.length > 0 ? new Set(bookableArtists.map(a => a.genre).filter(Boolean)).size : 0;
-  const venueCount         = events  ? new Set(events.map(e => e.venue?.id).filter(Boolean)).size : 0;
-  const totalEventArtists  = events?.reduce((sum, e) => sum + (e.eventArtists?.length ?? 0), 0) ?? 0;
+  const eventCount        = stats?.eventCount        ?? 0;
+  const artistCount       = stats?.bookableArtistCount ?? 0;
+  const genreCount        = stats?.genreCount        ?? 0;
+  const venueCount        = stats?.venueCount        ?? 0;
+  const totalEventArtists = stats?.totalEventArtists ?? 0;
 
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -599,9 +597,8 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLElement>(null);
 
-  // Upcoming event for hero widget
-  const { data: events } = useEvents();
-  const upcomingEvent = events?.find(e => new Date(e.date) >= new Date());
+  const { data: upcomingEvents } = useUpcomingEvents(1);
+  const upcomingEvent = upcomingEvents?.[0] ?? null;
 
   // Global scroll progress → top progress bar
   const { scrollYProgress } = useScroll();
