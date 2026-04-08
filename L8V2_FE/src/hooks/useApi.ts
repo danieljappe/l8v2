@@ -26,7 +26,7 @@ function adapt<T>(query: ReturnType<typeof useQuery<T>>) {
   return {
     data:    query.data ?? null,
     loading: query.isPending,
-    error:   query.error ? (query.error as Error).message : null,
+    error:   query.error ? query.error.message : null,
     refetch: query.refetch,
   };
 }
@@ -176,7 +176,7 @@ export function useMutation<T, R>(
 
   return {
     loading: mutation.isPending,
-    error:   mutation.error ? (mutation.error as Error).message : null,
+    error:   mutation.error ? mutation.error.message : null,
     data:    mutation.data ?? null,
     mutate:  async (data: T) => {
       try {
