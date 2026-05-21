@@ -34,13 +34,13 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
   const [q, setQ] = useState('');
   const [pubFilter, setPubFilter] = useState('all');
   const [catFilter, setCatFilter] = useState('all');
-  const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({ col: 'updated', dir: 'desc' });
+  const [sort, _setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({ col: 'updated', dir: 'desc' });
   const [editing, setEditing] = useState<GalleryItem | null | 'new'>(null);
   const [confirmDel, setConfirmDel] = useState<GalleryItem | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
-    apiService.getEvents().then(r => { if (r.data) setEvents(r.data); }).catch(() => {});
+    apiService.getEvents().then(r => { if (r.data) setEvents(r.data); }).catch(() => { /* noop */ });
   }, []);
 
   useEffect(() => {
@@ -88,7 +88,6 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
 
   const IcEdit = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>;
   const IcTrash = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>;
-  const IcEye = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx={12} cy={12} r={3}/></svg>;
 
   return (
     <div>
@@ -273,7 +272,7 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
                 events={events}
                 onSave={handleSave}
                 onClose={() => setEditing(null)}
-                onDelete={editing !== 'new' && editing ? () => { setConfirmDel(editing as GalleryItem); setEditing(null); } : undefined}
+                onDelete={editing !== 'new' && editing ? () => { setConfirmDel(editing); setEditing(null); } : undefined}
               />
             </div>
           </div>
@@ -346,7 +345,7 @@ function GalleryDrawerForm({ item, events, onSave, onClose, onDelete }: {
         eventId: item.eventId || '',
         isPublished: item.isPublished,
         orderIndex: item.orderIndex,
-        tags: item.tags || [],
+        tags: item.tags ?? [],
         updatedAt: item.updatedAt,
       });
     }

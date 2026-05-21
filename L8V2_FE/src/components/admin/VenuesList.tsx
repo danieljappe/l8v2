@@ -17,9 +17,6 @@ function colorFromName(name: string): string {
   return `oklch(0.50 0.08 ${hue})`;
 }
 
-const DEFAULT_FORM: Partial<Venue> = {
-  name: '', address: '', city: '', description: '', imageUrl: '', mapEmbedHtml: '',
-};
 
 function VenueMapPlaceholder({ pinColor }: { pinColor: string }) {
   return (
@@ -239,7 +236,7 @@ export default function VenuesList({ venues, onAddVenue, onUpdateVenue, onDelete
                   setEditing(null);
                 }}
                 onClose={() => setEditing(null)}
-                onDelete={editing !== 'new' && editing ? () => { setEditing(null); setConfirmDel(editing as Venue); } : undefined}
+                onDelete={editing !== 'new' && editing ? () => { setEditing(null); setConfirmDel(editing); } : undefined}
               />
             </div>
           </div>

@@ -160,7 +160,7 @@ export default function EventsList({
 
   // ── Timeline grouped by month ──────────────────────────────
   const byMonth = useMemo(() => {
-    const groups: Map<string, Event[]> = new Map();
+    const groups = new Map<string, Event[]>();
     filtered.forEach(ev => {
       const key = ev.date ? ev.date.slice(0, 7) : 'Unknown';
       if (!groups.has(key)) groups.set(key, []);
@@ -268,7 +268,7 @@ export default function EventsList({
                 {filtered.map(ev => {
                   const dp = fmtDateParts(ev.date);
                   const bg = posterColor(ev.title);
-                  const letter = ev.title.match(/[A-Za-z]/)?.[0] || '·';
+                  const letter = /[A-Za-z]/.exec(ev.title)?.[0] || '·';
                   const sold = ev.soldTickets ?? 0;
                   const cap = ev.maxCapacity ?? ev.totalTickets ?? ev.capacity ?? 0;
                   const pct = cap ? Math.round((sold / cap) * 100) : 0;
@@ -334,7 +334,7 @@ export default function EventsList({
             {filtered.map(ev => {
               const dp = fmtDateParts(ev.date);
               const bg = posterColor(ev.title);
-              const letter = ev.title.match(/[A-Za-z]/)?.[0] || '·';
+              const letter = /[A-Za-z]/.exec(ev.title)?.[0] || '·';
               const vName = venueName(ev.venue);
               const artNames = ev.eventArtists?.slice(0, 4).map(ea => ea.artist.name) ?? [];
               const sold = ev.soldTickets ?? 0;

@@ -102,7 +102,7 @@ export default function Sidebar({
     if (!user?.id) return;
     apiService.getUser(user.id).then((res) => {
       if (active && res.data) setProfile(res.data);
-    }).catch(() => {});
+    }).catch(() => { /* noop */ });
     return () => { active = false; };
   }, [user?.id]);
 

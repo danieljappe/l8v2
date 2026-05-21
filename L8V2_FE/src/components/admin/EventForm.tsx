@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Event, Artist, Venue } from '../../types/admin';
 
-type EventDraft = {
+interface EventDraft {
   title: string; description: string; date: string; time: string; endTime: string;
   venue: string; artists: string[]; price: number; capacity: number;
   image: string; billettoURL: string; status: Event['status'];
-};
+}
 
 export const emptyEventDraft: EventDraft = {
   title: '', description: '', date: '', time: '', endTime: '',

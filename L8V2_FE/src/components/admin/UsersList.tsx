@@ -45,7 +45,7 @@ export default function UsersList({ currentUser }: UsersListProps) {
 
   useEffect(() => {
     setLoading(true);
-    apiService.getUsers().then(r => { if (r.data) setUsers(r.data); }).catch(() => {}).finally(() => setLoading(false));
+    apiService.getUsers().then(r => { if (r.data) setUsers(r.data); }).catch(() => { /* noop */ }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -272,7 +272,7 @@ export default function UsersList({ currentUser }: UsersListProps) {
                 user={editing === 'new' ? null : editing}
                 onSave={handleSave}
                 onClose={() => setEditing(null)}
-                onDelete={editing !== 'new' && editing && editing.id !== currentUser?.id ? () => setConfirmDel(editing as User) : undefined}
+                onDelete={editing !== 'new' && editing && editing.id !== currentUser?.id ? () => setConfirmDel(editing) : undefined}
               />
             </div>
           </div>

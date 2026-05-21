@@ -23,16 +23,6 @@ interface PasswordFormState {
   confirmPassword: string;
 }
 
-const createFormState = (user?: Partial<ApiUser>): FormState => ({
-  firstName: user?.firstName || '',
-  lastName: user?.lastName || '',
-  email: user?.email || '',
-  phoneNumber: user?.phoneNumber || '',
-  address: user?.address || '',
-  imageUrl: user?.imageUrl || '',
-  role: user?.role || '',
-});
-
 const emptyPasswordState: PasswordFormState = {
   currentPassword: '',
   newPassword: '',

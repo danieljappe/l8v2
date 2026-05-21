@@ -5,12 +5,12 @@ import { apiService } from '../../services/api';
 import SimpleEmbeddingInput from './SimpleEmbeddingInput';
 import { normalizeSocialMedia } from '../../utils/socialMediaUtils';
 
-type ArtistDraft = {
+interface ArtistDraft {
   name: string; bio: string; imageUrl: string; website: string;
   socialMedia: { platform: string; url: string }[];
   genre: string; isBookable: boolean; bookingUserId: string;
   embeddings: { type: string; embedCode: string }[];
-};
+}
 
 export const emptyArtistDraft: ArtistDraft = {
   name: '', bio: '', imageUrl: '', website: '', socialMedia: [],
