@@ -28,6 +28,9 @@ export class Event {
   soldTickets!: number;
 
   @Column({ nullable: true })
+  maxCapacity?: number;
+
+  @Column({ nullable: true })
   imageUrl?: string;
 
   @Column({ default: true })

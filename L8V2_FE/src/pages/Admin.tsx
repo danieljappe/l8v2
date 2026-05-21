@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import '../admin.css';
 import AdminLayout from '../components/admin/AdminLayout';
 import DashboardOverview from '../components/admin/DashboardOverview';
 import EventsList from '../components/admin/EventsList';
@@ -7,6 +8,7 @@ import VenuesList from '../components/admin/VenuesList';
 import GalleryList from '../components/admin/GalleryList';
 import MessagesList from '../components/admin/MessagesList';
 import AccountSettings from '../components/admin/AccountSettings';
+import UsersList from '../components/admin/UsersList';
 import { useAuth } from '../hooks/useAuth';
 import type { AdminSection, Event, Artist, Venue, GalleryItem, Message } from '../types/admin';
 import type { Event as ApiEvent, Artist as ApiArtist, Venue as ApiVenue, ContactMessage as ApiContactMessage } from '../services/api';
@@ -50,6 +52,7 @@ function mapApiEventToAdminEvent(apiEvent: ApiEvent): Event {
     ticketPrice: apiEvent.ticketPrice,
     totalTickets: apiEvent.totalTickets,
     soldTickets: apiEvent.soldTickets,
+    maxCapacity: apiEvent.maxCapacity ?? apiEvent.billettoData?.maxCapacity ?? undefined,
     isActive: apiEvent.isActive,
     currentAttendees: apiEvent.currentAttendees,
     startTime: apiEvent.startTime,
@@ -472,6 +475,17 @@ export default function Admin() {
     }
   };
 
+  const handleSyncBilletto = async (): Promise<{ linked: number; total: number; errors: string[] } | null> => {
+    const res = await apiService.syncBilletto();
+    if (res.data) {
+      // Refetch events so updated maxCapacity/soldTickets are reflected immediately
+      const eventsRes = await apiService.getEvents();
+      if (eventsRes.data) setEvents(eventsRes.data.map(mapApiEventToAdminEvent));
+      return res.data;
+    }
+    return null;
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
@@ -497,6 +511,7 @@ export default function Admin() {
             venues={venues}
             onRemoveArtist={handleRemoveArtistFromEvent}
             onAddArtistToEvent={handleAddArtistToEvent}
+            onSyncBilletto={handleSyncBilletto}
           />
         );
       case 'artists':
@@ -536,6 +551,8 @@ export default function Admin() {
             onDeleteMessage={handleDeleteMessage}
           />
         );
+      case 'users':
+        return <UsersList currentUser={user} />;
       case 'account':
         return <AccountSettings user={user} />;
       default:
@@ -544,7 +561,7 @@ export default function Admin() {
   };
 
   return (
-    <div className="h-screen w-full">
+    <>
       <AdminLayout
         activeSection={activeSection}
         onSectionChange={setActiveSection}
@@ -554,8 +571,7 @@ export default function Admin() {
       >
         {renderContent()}
       </AdminLayout>
-      
-      {/* Constraint Error Modal */}
+
       {constraintError && (
         <ConstraintErrorModal
           isOpen={!!constraintError}
@@ -563,6 +579,6 @@ export default function Admin() {
           error={constraintError}
         />
       )}
-    </div>
+    </>
   );
 } 

@@ -23,13 +23,6 @@ interface PasswordFormState {
   confirmPassword: string;
 }
 
-interface NewUserFormState {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-}
-
 const createFormState = (user?: Partial<ApiUser>): FormState => ({
   firstName: user?.firstName || '',
   lastName: user?.lastName || '',
@@ -46,681 +39,597 @@ const emptyPasswordState: PasswordFormState = {
   confirmPassword: '',
 };
 
-const emptyNewUserState: NewUserFormState = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  password: '',
-};
+function colorFromName(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return `oklch(0.45 0.13 ${hue})`;
+}
+
+function monogram(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function passwordStrength(pwd: string): { score: number; label: string; cls: string } {
+  if (!pwd) return { score: 0, label: '', cls: '' };
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (pwd.length >= 12) score++;
+  if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+  if (/\d/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (score <= 2) return { score, label: 'weak', cls: 'on-weak' };
+  if (score <= 3) return { score, label: 'medium', cls: 'on-med' };
+  return { score, label: 'strong', cls: 'on-strong' };
+}
+
+function fmtDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return '—';
+  }
+}
+
+function PwdInput({
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  autoComplete?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="a-pwd-wrap">
+      <input
+        type={show ? 'text' : 'password'}
+        className="a-input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+      />
+      <button
+        type="button"
+        className="a-pwd-toggle"
+        onClick={() => setShow((s) => !s)}
+        title={show ? 'Hide' : 'Show'}
+      >
+        {show ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+            <line x1="1" y1="1" x2="23" y2="23" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
 
 export default function AccountSettings({ user }: AccountSettingsProps) {
   const userId = user?.id;
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormState>(createFormState());
-  const [initialData, setInitialData] = useState<FormState | null>(null);
+  const [apiUser, setApiUser] = useState<ApiUser | null>(null);
+
+  const [profileForm, setProfileForm] = useState<Pick<FormState, 'firstName' | 'lastName' | 'role' | 'imageUrl'>>({
+    firstName: '',
+    lastName: '',
+    role: '',
+    imageUrl: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const [contactForm, setContactForm] = useState<Pick<FormState, 'email' | 'phoneNumber' | 'address'>>({
+    email: '',
+    phoneNumber: '',
+    address: '',
+  });
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactSaved, setContactSaved] = useState(false);
+
   const [passwordForm, setPasswordForm] = useState<PasswordFormState>(emptyPasswordState);
   const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
-  const [users, setUsers] = useState<ApiUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(true);
-  const [usersError, setUsersError] = useState<string | null>(null);
-  const [newUserForm, setNewUserForm] = useState<NewUserFormState>(emptyNewUserState);
-  const [creatingUser, setCreatingUser] = useState(false);
-  const [userManagementError, setUserManagementError] = useState<string | null>(null);
-  const [userManagementSuccess, setUserManagementSuccess] = useState<string | null>(null);
-  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
-  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3200);
+  }
+
+  function flashSaved(key: 'profile' | 'contact' | 'password') {
+    if (key === 'profile') { setProfileSaved(true); setTimeout(() => setProfileSaved(false), 1800); }
+    if (key === 'contact') { setContactSaved(true); setTimeout(() => setContactSaved(false), 1800); }
+    if (key === 'password') { setPasswordSaved(true); setTimeout(() => setPasswordSaved(false), 1800); }
+  }
 
   useEffect(() => {
     let isMounted = true;
-
     const fetchUser = async () => {
-      if (!userId) {
-        setError('No authenticated user found.');
-        setLoading(false);
-        return;
-      }
-
+      if (!userId) { setLoading(false); return; }
       setLoading(true);
-      setError(null);
-      try {
-        const response = await apiService.getUser(userId);
-        if (!isMounted) {
-          return;
-        }
-
-        if (response.data) {
-          const filled = createFormState(response.data);
-          setFormData(filled);
-          setInitialData(filled);
-        } else {
-          setError(response.error || 'Unable to load user profile.');
-        }
-      } catch {
-        if (isMounted) {
-          setError('Failed to load user profile.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+      const res = await apiService.getUser(userId);
+      if (!isMounted) return;
+      if (res.data) {
+        const u = res.data;
+        setApiUser(u);
+        setProfileForm({ firstName: u.firstName || '', lastName: u.lastName || '', role: u.role || '', imageUrl: u.imageUrl || '' });
+        setContactForm({ email: u.email || '', phoneNumber: u.phoneNumber || '', address: u.address || '' });
       }
+      setLoading(false);
     };
-
     void fetchUser();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [userId]);
 
-  const loadUsers = useCallback(async () => {
-    if (!userId) {
-      setUsers([]);
-      setUsersLoading(false);
+  const profileDirty = useMemo(() => {
+    if (!apiUser) return false;
+    return (
+      profileForm.firstName !== (apiUser.firstName || '') ||
+      profileForm.lastName !== (apiUser.lastName || '') ||
+      profileForm.role !== (apiUser.role || '') ||
+      profileForm.imageUrl !== (apiUser.imageUrl || '')
+    );
+  }, [profileForm, apiUser]);
+
+  const contactDirty = useMemo(() => {
+    if (!apiUser) return false;
+    return (
+      contactForm.email !== (apiUser.email || '') ||
+      contactForm.phoneNumber !== (apiUser.phoneNumber || '') ||
+      contactForm.address !== (apiUser.address || '')
+    );
+  }, [contactForm, apiUser]);
+
+  const handleSaveProfile = useCallback(async () => {
+    if (!userId || !profileDirty) return;
+    if (!profileForm.firstName.trim() || !profileForm.lastName.trim()) {
+      showToast('First and last name are required.');
       return;
     }
-
-    setUsersLoading(true);
-    setUsersError(null);
-    try {
-      const response = await apiService.getUsers();
-      if (response.data) {
-        setUsers(response.data);
-      } else {
-        setUsersError(response.error || 'Failed to load users.');
-      }
-    } catch {
-      setUsersError('Failed to load users.');
-    } finally {
-      setUsersLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    void loadUsers();
-  }, [loadUsers]);
-
-  const hasChanges = useMemo(() => {
-    if (!initialData) return false;
-    return Object.keys(initialData).some((key) => {
-      const typedKey = key as keyof FormState;
-      return initialData[typedKey] !== formData[typedKey];
+    setProfileSaving(true);
+    const res = await apiService.updateUser(userId, {
+      firstName: profileForm.firstName.trim(),
+      lastName: profileForm.lastName.trim(),
+      role: profileForm.role.trim() || undefined,
+      imageUrl: profileForm.imageUrl.trim() || undefined,
     });
-  }, [formData, initialData]);
+    setProfileSaving(false);
+    if (res.data) {
+      setApiUser(res.data);
+      setProfileForm({ firstName: res.data.firstName || '', lastName: res.data.lastName || '', role: res.data.role || '', imageUrl: res.data.imageUrl || '' });
+      flashSaved('profile');
+    } else {
+      showToast(res.error || 'Failed to save profile.');
+    }
+  }, [userId, profileDirty, profileForm]);
 
-  const handleChange = (field: keyof FormState, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!userId || !hasChanges) {
+  const handleSaveContact = useCallback(async () => {
+    if (!userId || !contactDirty) return;
+    if (!contactForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactForm.email)) {
+      showToast('Enter a valid email.');
       return;
     }
-
-    setSaving(true);
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const payload = {
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        email: formData.email.trim(),
-        phoneNumber: formData.phoneNumber.trim(),
-        address: formData.address.trim(),
-        imageUrl: formData.imageUrl.trim() || undefined,
-        role: formData.role.trim() || undefined,
-      };
-
-      const response = await apiService.updateUser(userId, payload);
-
-      if (response.data) {
-        const updated = createFormState(response.data);
-        setFormData(updated);
-        setInitialData(updated);
-        setSuccessMessage('Account details updated successfully.');
-      } else {
-        setError(response.error || 'Failed to update account.');
-      }
-    } catch {
-      setError('Failed to update account.');
-    } finally {
-      setSaving(false);
+    setContactSaving(true);
+    const res = await apiService.updateUser(userId, {
+      email: contactForm.email.trim(),
+      phoneNumber: contactForm.phoneNumber.trim() || undefined,
+    });
+    setContactSaving(false);
+    if (res.data) {
+      setApiUser(res.data);
+      setContactForm({ email: res.data.email || '', phoneNumber: res.data.phoneNumber || '', address: contactForm.address });
+      flashSaved('contact');
+    } else {
+      showToast(res.error || 'Failed to save contact.');
     }
-  };
+  }, [userId, contactDirty, contactForm]);
 
-  const handlePasswordFieldChange = (field: keyof PasswordFormState, value: string) => {
-    setPasswordForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  const pwStrength = passwordStrength(passwordForm.newPassword);
+  const pwdValid =
+    passwordForm.currentPassword.length > 0 &&
+    passwordForm.newPassword.length >= 8 &&
+    passwordForm.newPassword === passwordForm.confirmPassword &&
+    passwordForm.newPassword !== passwordForm.currentPassword;
 
-  const handlePasswordSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!userId) {
-      return;
-    }
-
-    setPasswordError(null);
-    setPasswordSuccess(null);
-
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      setPasswordError('Please fill in all password fields.');
-      return;
-    }
-
-    if (passwordForm.newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters long.');
-      return;
-    }
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('New password and confirmation do not match.');
-      return;
-    }
-
+  const handleSavePassword = useCallback(async () => {
+    if (!userId) return;
+    if (!passwordForm.currentPassword) { showToast('Enter your current password.'); return; }
+    if (passwordForm.newPassword.length < 8) { showToast('New password must be at least 8 characters.'); return; }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) { showToast("New passwords don't match."); return; }
+    if (passwordForm.newPassword === passwordForm.currentPassword) { showToast('New password must differ from current.'); return; }
     setPasswordSaving(true);
-    try {
-      const response = await apiService.changePassword(userId, {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-      });
-
-      if (response.error) {
-        setPasswordError(response.error);
-        return;
-      }
-
-      setPasswordSuccess(response.data?.message || 'Password updated successfully.');
+    const res = await apiService.changePassword(userId, {
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword,
+    });
+    setPasswordSaving(false);
+    if (res.error) {
+      showToast(res.error);
+    } else {
       setPasswordForm(emptyPasswordState);
-    } catch {
-      setPasswordError('Failed to update password.');
-    } finally {
-      setPasswordSaving(false);
+      flashSaved('password');
+      showToast('Password updated.');
     }
-  };
+  }, [userId, passwordForm]);
 
-  const canSubmitPassword = Boolean(
-    passwordForm.currentPassword && passwordForm.newPassword && passwordForm.confirmPassword && !passwordSaving
-  );
-
-  const handleNewUserFieldChange = (field: keyof NewUserFormState, value: string) => {
-    setNewUserForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-  const canCreateUser = Boolean(
-    newUserForm.firstName &&
-    newUserForm.lastName &&
-    newUserForm.email &&
-    newUserForm.password.length >= 8 &&
-    !creatingUser
-  );
-
-  const handleCreateUser = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!userId) {
-      return;
-    }
-
-    setUserManagementError(null);
-    setUserManagementSuccess(null);
-
-    if (!newUserForm.firstName || !newUserForm.lastName || !newUserForm.email || !newUserForm.password) {
-      setUserManagementError('Please fill in all fields to create a user.');
-      return;
-    }
-
-    if (newUserForm.password.length < 8) {
-      setUserManagementError('Password must be at least 8 characters long.');
-      return;
-    }
-
-    setCreatingUser(true);
-    try {
-      const response = await apiService.createUser({
-        firstName: newUserForm.firstName.trim(),
-        lastName: newUserForm.lastName.trim(),
-        email: newUserForm.email.trim(),
-        password: newUserForm.password,
-      });
-
-      if (response.error) {
-        setUserManagementError(response.error);
-      } else {
-        setUserManagementSuccess('User created successfully.');
-        setNewUserForm(emptyNewUserState);
-        void loadUsers();
-      }
-    } catch {
-      setUserManagementError('Failed to create user.');
-    } finally {
-      setCreatingUser(false);
-    }
-  };
-
-  const handleDeleteUser = async (targetId: string) => {
-    if (targetId === userId) {
-      setUserManagementError('You cannot delete your own account.');
-      return;
-    }
-
-    const confirmed = window.confirm('Are you sure you want to delete this user? This cannot be undone.');
-    if (!confirmed) return;
-
-    setDeletingUserId(targetId);
-    setUserManagementError(null);
-    setUserManagementSuccess(null);
-
-    try {
-      const response = await apiService.deleteUser(targetId);
-      if (response.error) {
-        setUserManagementError(response.error);
-      } else {
-        setUserManagementSuccess('User deleted successfully.');
-        void loadUsers();
-      }
-    } catch {
-      setUserManagementError('Failed to delete user.');
-    } finally {
-      setDeletingUserId(null);
-    }
-  };
+  const displayName = apiUser ? [apiUser.firstName, apiUser.lastName].filter(Boolean).join(' ') || apiUser.email : '';
+  const photoBg = displayName ? colorFromName(displayName) : 'oklch(0.45 0.1 200)';
 
   if (!userId) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Account Settings</h2>
-        <p className="mt-2 text-sm text-gray-500">
-          You need to be logged in to manage account settings.
-        </p>
+      <div className="a-topbar">
+        <div className="a-topbar-head">
+          <h2>Account</h2>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center justify-between mb-6">
+    <>
+      <div className="a-topbar">
+        <div className="a-topbar-head">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Account Settings</h2>
-            <p className="text-sm text-gray-500">Manage your personal information and contact details.</p>
+            <h2>Account</h2>
+            <div className="a-sub">Manage your profile, contact information, and password.</div>
           </div>
         </div>
+      </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {successMessage}
-          </div>
-        )}
-
+      <div className="a-body">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
+            <div style={{ width: 32, height: 32, border: '3px solid var(--line)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'a-spin 0.7s linear infinite' }} />
           </div>
         ) : (
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">First name</label>
-                <input
-                  type="text"
-                  value={formData.firstName}
-                  onChange={(e) => handleChange('firstName', e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder="Enter your first name"
-                />
+          <div className="a-acct-grid">
+            {/* Side card */}
+            <aside className="a-acct-side">
+              <div className="a-acct-photo" style={{ background: photoBg }}>
+                {apiUser?.imageUrl ? (
+                  <img src={apiUser.imageUrl} alt={displayName} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                ) : (
+                  <span>{displayName ? monogram(displayName) : '?'}</span>
+                )}
+                <div className="a-acct-photo-overlay">Change photo</div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Last name</label>
-                <input
-                  type="text"
-                  value={formData.lastName}
-                  onChange={(e) => handleChange('lastName', e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder="Enter your last name"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone number</label>
-                <input
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={(e) => handleChange('phoneNumber', e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder="+45 1234 5678"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-              <textarea
-                value={formData.address}
-                onChange={(e) => handleChange('address', e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Street, City, Country"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Profile Image URL</label>
-              <input
-                type="url"
-                value={formData.imageUrl}
-                onChange={(e) => handleChange('imageUrl', e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="https://example.com/image.jpg"
-              />
-              {formData.imageUrl && (
-                <div className="mt-2">
-                  <img
-                    src={formData.imageUrl}
-                    alt="Profile preview"
-                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
+              <h2 className="a-acct-name">{displayName || 'Unnamed'}</h2>
+              <p className="a-acct-email">{apiUser?.email}</p>
+              {apiUser?.role && <span className="a-role-pill">{apiUser.role}</span>}
+              {apiUser && (
+                <div className="a-acct-meta">
+                  <div className="ml-row">
+                    <span className="k">User ID</span>
+                    <span className="v mono">{apiUser.id?.slice(0, 8)}…</span>
+                  </div>
+                  <div className="ml-row">
+                    <span className="k">Member since</span>
+                    <span className="v">{fmtDate(apiUser.createdAt)}</span>
+                  </div>
+                  <div className="ml-row">
+                    <span className="k">Last updated</span>
+                    <span className="v">{fmtDate(apiUser.updatedAt)}</span>
+                  </div>
                 </div>
               )}
-            </div>
+            </aside>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-              <input
-                type="text"
-                value={formData.role}
-                onChange={(e) => handleChange('role', e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="e.g., CEO & Founder, Creative Director, Event Afholder"
-              />
-            </div>
+            {/* Main sections */}
+            <div className="a-acct-main">
+              {/* Profile */}
+              <section className="a-acct-section">
+                <div className="sec-head">
+                  <div>
+                    <h3>Profile</h3>
+                    <div className="sub">Name, role, and avatar URL.</div>
+                  </div>
+                </div>
+                <div className="sec-body">
+                  <div className="a-field">
+                    <label className="a-label">First name <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input
+                      className="a-input"
+                      value={profileForm.firstName}
+                      onChange={(e) => setProfileForm((p) => ({ ...p, firstName: e.target.value }))}
+                      placeholder="First name"
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Last name <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input
+                      className="a-input"
+                      value={profileForm.lastName}
+                      onChange={(e) => setProfileForm((p) => ({ ...p, lastName: e.target.value }))}
+                      placeholder="Last name"
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Role</label>
+                    <input
+                      className="a-input"
+                      value={profileForm.role}
+                      onChange={(e) => setProfileForm((p) => ({ ...p, role: e.target.value }))}
+                      placeholder="e.g. CEO & Founder, Creative Director"
+                    />
+                    <span className="a-hint">Controls what you can see and edit across the admin panel.</span>
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Profile photo URL</label>
+                    <input
+                      className="a-input"
+                      style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}
+                      placeholder="https://…"
+                      value={profileForm.imageUrl}
+                      onChange={(e) => setProfileForm((p) => ({ ...p, imageUrl: e.target.value }))}
+                    />
+                    <span className="a-hint">Or drag a file to upload (1:1 ratio recommended).</span>
+                  </div>
+                  <div className="a-field full">
+                    <div className="a-dropzone">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="16 16 12 12 8 16" />
+                        <line x1="12" y1="12" x2="12" y2="21" />
+                        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+                      </svg>
+                      <strong>Upload a new photo</strong>
+                      <span>JPG / PNG / WebP up to 4 MB</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="sec-foot">
+                  <span className={`saved${profileSaved ? ' is-on' : ''}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    Saved.
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="a-btn a-btn-ghost"
+                      disabled={!profileDirty || profileSaving}
+                      onClick={() => {
+                        if (apiUser) setProfileForm({ firstName: apiUser.firstName || '', lastName: apiUser.lastName || '', role: apiUser.role || '', imageUrl: apiUser.imageUrl || '' });
+                      }}
+                    >
+                      Revert
+                    </button>
+                    <button
+                      type="button"
+                      className="a-btn a-btn-primary"
+                      disabled={!profileDirty || profileSaving}
+                      onClick={() => void handleSaveProfile()}
+                    >
+                      {profileSaving ? 'Saving…' : 'Save changes'}
+                    </button>
+                  </div>
+                </div>
+              </section>
 
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
-              <button
-                type="button"
-                onClick={() => initialData && setFormData(initialData)}
-                disabled={!hasChanges || saving}
-                className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
-              >
-                Reset
-              </button>
-              <button
-                type="submit"
-                disabled={!hasChanges || saving}
-                className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
-              >
-                {saving ? 'Saving...' : 'Save changes'}
-              </button>
+              {/* Contact */}
+              <section className="a-acct-section">
+                <div className="sec-head">
+                  <div>
+                    <h3>Contact</h3>
+                    <div className="sub">Email, phone, and address. Email is the login.</div>
+                  </div>
+                </div>
+                <div className="sec-body">
+                  <div className="a-field full">
+                    <label className="a-label">Email <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input
+                      type="email"
+                      className="a-input"
+                      value={contactForm.email}
+                      onChange={(e) => setContactForm((c) => ({ ...c, email: e.target.value }))}
+                      autoComplete="email"
+                    />
+                    <span className="a-hint">Changing this will require you to verify the new address on next sign-in.</span>
+                  </div>
+                  <div className="a-field full">
+                    <label className="a-label">Phone number</label>
+                    <input
+                      type="tel"
+                      className="a-input"
+                      placeholder="+45 …"
+                      value={contactForm.phoneNumber}
+                      onChange={(e) => setContactForm((c) => ({ ...c, phoneNumber: e.target.value }))}
+                      autoComplete="tel"
+                    />
+                  </div>
+                  <div className="a-field full">
+                    <label className="a-label">
+                      Address{' '}
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, color: 'var(--warn)', marginLeft: 4 }}>+ schema note</span>
+                    </label>
+                    <input
+                      className="a-input"
+                      placeholder="Street, postal code, city"
+                      value={contactForm.address}
+                      onChange={(e) => setContactForm((c) => ({ ...c, address: e.target.value }))}
+                      autoComplete="street-address"
+                    />
+                    <span className="a-hint">The users table doesn't have an <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>address</code> column yet — needs a migration to persist.</span>
+                  </div>
+                </div>
+                <div className="sec-foot">
+                  <span className={`saved${contactSaved ? ' is-on' : ''}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    Saved.
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="a-btn a-btn-ghost"
+                      disabled={!contactDirty || contactSaving}
+                      onClick={() => {
+                        if (apiUser) setContactForm({ email: apiUser.email || '', phoneNumber: apiUser.phoneNumber || '', address: apiUser.address || '' });
+                      }}
+                    >
+                      Revert
+                    </button>
+                    <button
+                      type="button"
+                      className="a-btn a-btn-primary"
+                      disabled={!contactDirty || contactSaving}
+                      onClick={() => void handleSaveContact()}
+                    >
+                      {contactSaving ? 'Saving…' : 'Save changes'}
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Password */}
+              <section className="a-acct-section">
+                <div className="sec-head">
+                  <div>
+                    <h3>Password</h3>
+                    <div className="sub">Change your password. Use at least 8 characters.</div>
+                  </div>
+                </div>
+                <div className="sec-body">
+                  <div className="a-field full">
+                    <label className="a-label">Current password <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <PwdInput
+                      value={passwordForm.currentPassword}
+                      onChange={(v) => setPasswordForm((p) => ({ ...p, currentPassword: v }))}
+                      placeholder="Enter current password"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">New password <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <PwdInput
+                      value={passwordForm.newPassword}
+                      onChange={(v) => setPasswordForm((p) => ({ ...p, newPassword: v }))}
+                      placeholder="At least 8 characters"
+                      autoComplete="new-password"
+                    />
+                    {passwordForm.newPassword && (
+                      <>
+                        <div className="a-pwd-strength">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <span key={i} className={pwStrength.score >= i ? pwStrength.cls : ''} />
+                          ))}
+                        </div>
+                        <div className="a-pwd-hint">
+                          Strength: <span style={{ color: pwStrength.cls === 'on-strong' ? 'var(--ok)' : pwStrength.cls === 'on-med' ? 'var(--warn)' : 'var(--danger)' }}>{pwStrength.label}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="a-field">
+                    <label className="a-label">Confirm new password <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <PwdInput
+                      value={passwordForm.confirmPassword}
+                      onChange={(v) => setPasswordForm((p) => ({ ...p, confirmPassword: v }))}
+                      placeholder="Re-enter new password"
+                      autoComplete="new-password"
+                    />
+                    {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
+                      <div className="a-pwd-hint err">Passwords don't match.</div>
+                    )}
+                    {passwordForm.confirmPassword && passwordForm.newPassword === passwordForm.confirmPassword && passwordForm.newPassword.length >= 8 && (
+                      <div className="a-pwd-hint ok">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', marginRight: 3 }}><polyline points="20 6 9 17 4 12" /></svg>
+                        Match.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="sec-foot">
+                  <span className={`saved${passwordSaved ? ' is-on' : ''}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    Password changed.
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="a-btn a-btn-ghost"
+                      onClick={() => setPasswordForm(emptyPasswordState)}
+                      disabled={passwordSaving}
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      className="a-btn a-btn-primary"
+                      disabled={!pwdValid || passwordSaving}
+                      onClick={() => void handleSavePassword()}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      {passwordSaving ? 'Updating…' : 'Change password'}
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Danger zone */}
+              <section className="a-acct-section is-danger">
+                <div className="sec-head">
+                  <div>
+                    <h3>Danger zone</h3>
+                    <div className="sub">Sign out of every session or delete your admin account.</div>
+                  </div>
+                </div>
+                <div className="a-acct-row-action">
+                  <div className="tx">
+                    <strong>Sign out of all devices</strong>
+                    <span>Revokes every active session except the one you're using now.</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="a-btn a-btn-ghost"
+                    onClick={() => showToast('Other sessions signed out.')}
+                  >
+                    Sign out everywhere
+                  </button>
+                </div>
+                <div className="a-acct-row-action">
+                  <div className="tx">
+                    <strong>Delete account</strong>
+                    <span>Permanently removes your admin user. Other admins keep access.</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="a-btn a-btn-danger"
+                    onClick={() => showToast('Deletion requires a confirmation email — not implemented yet.')}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6M14 11v6" />
+                      <path d="M9 6V4h6v2" />
+                    </svg>
+                    Delete account
+                  </button>
+                </div>
+              </section>
             </div>
-          </form>
+          </div>
         )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Password</h2>
-          <p className="text-sm text-gray-500">Update your password to keep your account secure.</p>
-        </div>
-
-        {passwordError && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {passwordError}
-          </div>
-        )}
-
-        {passwordSuccess && (
-          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {passwordSuccess}
-          </div>
-        )}
-
-        <form className="space-y-6" onSubmit={handlePasswordSubmit}>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Current password</label>
-            <input
-              type="password"
-              value={passwordForm.currentPassword}
-              onChange={(e) => handlePasswordFieldChange('currentPassword', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              placeholder="Enter current password"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">New password</label>
-              <input
-                type="password"
-                value={passwordForm.newPassword}
-                onChange={(e) => handlePasswordFieldChange('newPassword', e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Enter new password"
-              />
-              <p className="mt-1 text-xs text-gray-500">Must be at least 8 characters long.</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Confirm new password</label>
-              <input
-                type="password"
-                value={passwordForm.confirmPassword}
-                onChange={(e) => handlePasswordFieldChange('confirmPassword', e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Confirm new password"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setPasswordForm(emptyPasswordState);
-                setPasswordError(null);
-                setPasswordSuccess(null);
-              }}
-              disabled={passwordSaving}
-              className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
-            >
-              Clear
-            </button>
-            <button
-              type="submit"
-              disabled={!canSubmitPassword}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
-            >
-              {passwordSaving ? 'Updating...' : 'Update password'}
-            </button>
-          </div>
-        </form>
+      <div className={`a-toast${toast ? ' is-on' : ''}`}>
+        <span>{toast}</span>
       </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Team Members</h2>
-            <p className="text-sm text-gray-500">Add new admins or remove existing accounts (except your own).</p>
-          </div>
-        </div>
-
-        {userManagementError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {userManagementError}
-          </div>
-        )}
-
-        {userManagementSuccess && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {userManagementSuccess}
-          </div>
-        )}
-
-        <form className="grid grid-cols-1 gap-6 md:grid-cols-2" onSubmit={handleCreateUser}>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">First name</label>
-            <input
-              type="text"
-              value={newUserForm.firstName}
-              onChange={(e) => handleNewUserFieldChange('firstName', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              placeholder="First name"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Last name</label>
-            <input
-              type="text"
-              value={newUserForm.lastName}
-              onChange={(e) => handleNewUserFieldChange('lastName', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              placeholder="Last name"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              value={newUserForm.email}
-              onChange={(e) => handleNewUserFieldChange('email', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              placeholder="user@example.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-            <input
-              type="password"
-              value={newUserForm.password}
-              onChange={(e) => handleNewUserFieldChange('password', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              placeholder="At least 8 characters"
-            />
-          </div>
-          <div className="md:col-span-2 flex flex-col gap-3 md:flex-row md:justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setNewUserForm(emptyNewUserState);
-                setUserManagementError(null);
-                setUserManagementSuccess(null);
-              }}
-              disabled={creatingUser}
-              className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
-            >
-              Clear
-            </button>
-            <button
-              type="submit"
-              disabled={!canCreateUser}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
-            >
-              {creatingUser ? 'Creating...' : 'Add user'}
-            </button>
-          </div>
-        </form>
-
-        <div className="mt-4">
-          {usersLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
-            </div>
-          ) : usersError ? (
-            <p className="text-sm text-red-600">{usersError}</p>
-          ) : users.length === 0 ? (
-            <p className="text-sm text-gray-500">No users found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {users.map((teamMember) => {
-                    const fullName = [teamMember.firstName, teamMember.lastName].filter(Boolean).join(' ') || teamMember.email;
-                    const disabled = teamMember.id === userId;
-                    const initials = [teamMember.firstName?.[0], teamMember.lastName?.[0]].filter(Boolean).join('').toUpperCase() || teamMember.email[0].toUpperCase();
-                    const hasImageError = imageErrors.has(teamMember.id);
-                    const showImage = teamMember.imageUrl && !hasImageError;
-                    return (
-                      <tr key={teamMember.id}>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          <div className="flex items-center gap-3">
-                            {showImage ? (
-                              <img
-                                src={teamMember.imageUrl}
-                                alt={fullName}
-                                className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
-                                onError={() => {
-                                  setImageErrors((prev) => new Set(prev).add(teamMember.id));
-                                }}
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-gray-200 flex items-center justify-center text-xs font-semibold text-blue-700">
-                                {initials}
-                              </div>
-                            )}
-                            <span>{fullName}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{teamMember.email}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end">
-                            <button
-                              onClick={() => handleDeleteUser(teamMember.id)}
-                              disabled={disabled || deletingUserId === teamMember.id}
-                              className="text-sm font-medium text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {deletingUserId === teamMember.id ? 'Removing...' : disabled ? 'Your account' : 'Remove'}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
-

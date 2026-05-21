@@ -1,240 +1,182 @@
 import { useEffect, useMemo, useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Users, 
-  MapPin, 
-  Image, 
-  MessageSquare,
-  ChevronLeft,
-  ChevronRight,
-  ArrowLeft,
-  LogOut,
-  UserCircle
-} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { AdminSection } from '../../types/admin';
 import type { AuthUser } from '../../hooks/useAuth';
 import type { User as ApiUser } from '../../services/api';
 import { apiService } from '../../services/api';
 
-type SidebarUserProfile = ApiUser & {
-  firstName?: string;
-  lastName?: string;
-};
-
 interface SidebarProps {
   activeSection: AdminSection;
   onSectionChange: (section: AdminSection) => void;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
   unreadMessages: number;
   onLogout: () => void;
   user?: AuthUser | null;
 }
 
-const menuItems = [
-  { id: 'dashboard' as AdminSection, label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'events' as AdminSection, label: 'Events', icon: Calendar },
-  { id: 'artists' as AdminSection, label: 'Artists', icon: Users },
-  { id: 'venues' as AdminSection, label: 'Venues', icon: MapPin },
-  { id: 'gallery' as AdminSection, label: 'Gallery', icon: Image },
-  { id: 'messages' as AdminSection, label: 'Messages', icon: MessageSquare },
-  { id: 'account' as AdminSection, label: 'Account', icon: UserCircle },
+const NAV_ITEMS: { id: AdminSection; label: string; icon: React.ReactNode }[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'events',
+    label: 'Events',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'artists',
+    label: 'Artists',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'venues',
+    label: 'Venues',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s-7-7.5-7-13a7 7 0 1 1 14 0c0 5.5-7 13-7 13Z"/><circle cx="12" cy="9" r="2.5"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'gallery',
+    label: 'Gallery',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'messages',
+    label: 'Messages',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-4-1L3 21l2-5.5a8.4 8.4 0 0 1-1-4A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'users',
+    label: 'Users',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'account',
+    label: 'Account',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>
+      </svg>
+    ),
+  },
 ];
 
-export default function Sidebar({ 
-  activeSection, 
-  onSectionChange, 
-  isCollapsed, 
-  onToggleCollapse,
+export default function Sidebar({
+  activeSection,
+  onSectionChange,
   unreadMessages,
   onLogout,
-  user = null
+  user = null,
 }: SidebarProps) {
-  const [profile, setProfile] = useState<SidebarUserProfile | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [profile, setProfile] = useState<ApiUser | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const loadUserProfile = async () => {
-      if (!user?.id) {
-        setProfile(null);
-        return;
-      }
-
-      setIsLoadingProfile(true);
-
-      try {
-        const response = await apiService.getUser(user.id);
-
-        if (!isMounted) {
-          return;
-        }
-
-        if (response.data) {
-          setProfile(response.data);
-        } else {
-          setProfile(null);
-        }
-      } catch {
-        if (isMounted) {
-          setProfile(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingProfile(false);
-        }
-      }
-    };
-
-    void loadUserProfile();
-
-    return () => {
-      isMounted = false;
-    };
+    let active = true;
+    if (!user?.id) return;
+    apiService.getUser(user.id).then((res) => {
+      if (active && res.data) setProfile(res.data);
+    }).catch(() => {});
+    return () => { active = false; };
   }, [user?.id]);
 
   const displayName = useMemo(() => {
     if (profile) {
-      const nameFromParts = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
-      return nameFromParts || profile.name || profile.email || 'Admin User';
+      const parts = [(profile as ApiUser & { firstName?: string; lastName?: string }).firstName, (profile as ApiUser & { firstName?: string; lastName?: string }).lastName].filter(Boolean).join(' ').trim();
+      return parts || profile.name || profile.email || 'Admin';
     }
-    if (user?.name) return user.name;
-    if (user?.email) return user.email;
-    return 'Admin User';
+    return user?.name || user?.email || 'Admin';
   }, [profile, user]);
 
-  const displayEmail = useMemo(() => {
-    if (profile?.email) return profile.email;
-    return user?.email || '';
-  }, [profile, user]);
+  const displayEmail = useMemo(() => profile?.email || user?.email || '', [profile, user]);
 
-  const avatarLetter = useMemo(() => {
-    if (displayName && displayName.length > 0) {
-      return displayName.charAt(0).toUpperCase();
-    }
-    return 'A';
-  }, [displayName]);
+  const avatarLetter = displayName.charAt(0).toUpperCase() || 'A';
+  const avatarUrl = (profile as (ApiUser & { imageUrl?: string }) | null)?.imageUrl;
 
   return (
-    <div className={`bg-white border-r border-gray-200 transition-all duration-300 ${
-      isCollapsed ? 'w-16' : 'w-64'
-    } flex flex-col h-full`}>
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        {!isCollapsed && (
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-l8-blue to-l8-blue-dark rounded-lg flex items-center justify-center">
-              <LayoutDashboard className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-gray-900">Admin Panel</span>
-          </div>
-        )}
-        <button
-          onClick={onToggleCollapse}
-          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-gray-500" />
-          ) : (
-            <ChevronLeft className="w-4 h-4 text-gray-500" />
-          )}
-        </button>
-      </div>
-
-      <nav className="flex-1 p-2">
-        <ul className="space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.id;
-            const showBadge = item.id === 'messages' && unreadMessages > 0;
-
-            return (
-              <li key={item.id}>
-                <button
-                  onClick={() => onSectionChange(item.id)}
-                  className={`w-full flex items-center px-3 py-2.5 rounded-lg text-left transition-all duration-200 ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 ${isCollapsed ? 'mx-auto' : 'mr-3'} ${
-                    isActive ? 'text-blue-600' : 'text-gray-500'
-                  }`} />
-                  {!isCollapsed && (
-                    <>
-                      <span className="font-medium">{item.label}</span>
-                      {showBadge && (
-                        <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
-                          {unreadMessages}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      <div className="p-4 border-t border-gray-200 space-y-2">
-        {/* Back to site button */}
-        <Link
-          to="/"
-          className={`flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 ${
-            isCollapsed ? 'justify-center' : 'space-x-3'
-          }`}
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-500" />
-          {!isCollapsed && <span className="font-medium">Back to Site</span>}
-        </Link>
-
-        {/* Logout button */}
-        <button
-          onClick={onLogout}
-          className={`flex items-center px-3 py-2 rounded-lg text-red-700 hover:bg-red-50 hover:text-red-900 transition-all duration-200 ${
-            isCollapsed ? 'justify-center' : 'space-x-3'
-          }`}
-        >
-          <LogOut className="w-5 h-5 text-red-500" />
-          {!isCollapsed && <span className="font-medium">Logout</span>}
-        </button>
-
-        {/* Admin user info */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-          {profile?.imageUrl ? (
-            <img
-              src={profile.imageUrl}
-              alt={displayName}
-              className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-              }}
-            />
-          ) : null}
-          <div className={`w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center ${profile?.imageUrl ? 'hidden' : ''}`}>
-            <span className="text-sm font-medium text-gray-700">
-              {avatarLetter}
-            </span>
-          </div>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {isLoadingProfile ? 'Loading user...' : displayName}
-              </p>
-              {displayEmail && (
-                <p className="text-xs text-gray-500 truncate">
-                  {displayEmail}
-                </p>
-              )}
-            </div>
-          )}
+    <aside className="a-sb">
+      {/* Brand */}
+      <div className="a-sb-brand">
+        <div className="a-sb-mark">L8</div>
+        <div className="a-sb-name">
+          <h1>L8 Events</h1>
+          <small>Admin</small>
         </div>
       </div>
-    </div>
+
+      {/* Nav */}
+      <nav className="a-sb-nav">
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.id}
+            className={`a-sb-link${activeSection === item.id ? ' is-active' : ''}`}
+            onClick={() => onSectionChange(item.id)}
+          >
+            {item.icon}
+            {item.label}
+            {item.id === 'messages' && unreadMessages > 0 && (
+              <span className="a-sb-badge">{unreadMessages}</span>
+            )}
+          </button>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="a-sb-footer">
+        <div className="a-sb-footer-user">
+          <div className="a-sb-avatar">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} />
+            ) : (
+              avatarLetter
+            )}
+          </div>
+          <div className="a-sb-who">
+            <div className="nm">{displayName}</div>
+            {displayEmail && <div className="em">{displayEmail}</div>}
+          </div>
+        </div>
+        <div className="a-sb-footer-actions">
+          <Link to="/" className="a-sb-footer-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Site
+          </Link>
+          <button className="a-sb-footer-btn danger" onClick={onLogout}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </div>
+    </aside>
   );
-} 
+}

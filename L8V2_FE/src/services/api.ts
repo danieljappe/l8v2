@@ -229,6 +229,7 @@ export interface Event {
   ticketPrice: number;
   totalTickets: number;
   soldTickets: number;
+  maxCapacity?: number;
   imageUrl?: string;
   billettoURL?: string;
   isActive: boolean;
@@ -366,6 +367,9 @@ export const apiService = {
     apiClient.post<User>('/users', user),
   deleteUser: (id: string) => apiClient.delete<{ message: string }>(`/users/${id}`),
 
+
+  // Billetto
+  syncBilletto: () => apiClient.post<{ total: number; linked: number; unlinked: number; errors: string[] }>('/billetto/sync', {}),
 
   // Stats
   getStats: () => apiClient.get<{

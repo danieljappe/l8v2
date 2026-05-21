@@ -61,6 +61,12 @@ export class BillettoService {
       newRecord.eventId = localEvent?.id ?? null;
       await this.repo.save(newRecord);
     }
+
+    // Keep event.maxCapacity in sync so it's available without joining billetto_event_data
+    const linkedEventId = localEvent?.id ?? record?.eventId;
+    if (linkedEventId && maxCapacity != null) {
+      await this.eventRepo.update(linkedEventId, { maxCapacity });
+    }
   }
 
   async syncAllEvents(): Promise<SyncSummary> {

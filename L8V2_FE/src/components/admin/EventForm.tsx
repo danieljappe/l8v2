@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Event, Artist, Venue } from '../../types/admin';
-import Select from 'react-select';
+
+type EventDraft = {
+  title: string; description: string; date: string; time: string; endTime: string;
+  venue: string; artists: string[]; price: number; capacity: number;
+  image: string; billettoURL: string; status: Event['status'];
+};
+
+export const emptyEventDraft: EventDraft = {
+  title: '', description: '', date: '', time: '', endTime: '',
+  venue: '', artists: [], price: 0, capacity: 0,
+  image: '', billettoURL: import.meta.env.DEV ? 'https://billetto.dk/e/test-event-123456' : '', status: 'upcoming',
+};
 
 interface EventFormProps {
   event?: Event | null;
@@ -12,27 +21,153 @@ interface EventFormProps {
   venues: Venue[];
   onRemoveArtist?: (eventId: string, artistId: string) => void;
   onAddArtistToEvent?: (eventId: string, artistId: string) => void;
+  draft?: EventDraft;
+  onDraftChange?: (draft: EventDraft) => void;
 }
 
-export default function EventForm({ event, onSubmit, onCancel, artists, venues, onRemoveArtist, onAddArtistToEvent }: EventFormProps) {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    date: '',
-    time: '',
-    endTime: '',
-    venue: '',
-    artists: [] as string[],
-    price: 0,
-    capacity: 0,
-    image: '',
-    billettoURL: '',
-    status: 'upcoming' as Event['status']
-  });
+// ── Artist combobox ────────────────────────────────────────────────
+interface ArtistComboboxProps {
+  value: string[];             // selected IDs (for new event)
+  onChange: (ids: string[]) => void;
+  artists: Artist[];
+  // For editing an existing event — live add/remove
+  eventArtists?: { id: string; artist: { id: string; name: string } }[];
+  onAddArtist?: (artistId: string) => void;
+  onRemoveArtist?: (artistId: string) => void;
+  isEditing: boolean;
+}
+
+function ArtistCombobox({ value, onChange, artists, eventArtists, onAddArtist, onRemoveArtist, isEditing }: ArtistComboboxProps) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  // When editing: selected = eventArtists; when creating: selected = value array
+  const selectedIds = isEditing
+    ? (eventArtists?.map(ea => ea.artist.id) ?? [])
+    : value;
+
+  const filtered = artists.filter(a => a.name.toLowerCase().includes(q.toLowerCase()));
+  const selectedSet = new Set(selectedIds);
+
+  function add(artistId: string) {
+    if (selectedSet.has(artistId)) return;
+    if (isEditing) {
+      onAddArtist?.(artistId);
+    } else {
+      onChange([...value, artistId]);
+    }
+    setQ('');
+    inputRef.current?.focus();
+  }
+
+  function remove(artistId: string) {
+    if (isEditing) {
+      onRemoveArtist?.(artistId);
+    } else {
+      onChange(value.filter(id => id !== artistId));
+    }
+  }
+
+  function onKey(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = filtered[activeIdx];
+      if (target) add(target.id);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIdx(i => Math.min(i + 1, filtered.length - 1));
+      setOpen(true);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Backspace' && q === '' && selectedIds.length > 0) {
+      remove(selectedIds[selectedIds.length - 1]);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  }
+
+  // Display items: when editing use eventArtists names; when creating look up from artists
+  const displayItems = isEditing
+    ? (eventArtists ?? []).map(ea => ({ id: ea.artist.id, name: ea.artist.name }))
+    : artists.filter(a => value.includes(a.id)).map(a => ({ id: a.id, name: a.name }));
+
+  return (
+    <div className="a-combo" ref={ref}>
+      <div
+        className={`a-combo-input${open ? ' is-focus' : ''}`}
+        onClick={() => { setOpen(true); inputRef.current?.focus(); }}
+      >
+        {displayItems.map(item => (
+          <span className="a-chip-sel" key={item.id}>
+            {item.name}
+            <button type="button" onClick={e => { e.stopPropagation(); remove(item.id); }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          value={q}
+          onChange={e => { setQ(e.target.value); setOpen(true); setActiveIdx(0); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKey}
+          placeholder={selectedIds.length === 0 ? 'Type to search artists…' : 'Add another…'}
+        />
+      </div>
+      {open && (
+        <div className="a-combo-pop">
+          {filtered.length === 0 ? (
+            <div style={{ padding: '8px 10px', fontSize: 12.5, color: 'var(--ink-3)' }}>
+              No artists match "{q}".
+            </div>
+          ) : filtered.map((a, i) => {
+            const sel = selectedSet.has(a.id);
+            return (
+              <div
+                key={a.id}
+                className={`a-combo-opt${i === activeIdx ? ' is-active' : ''}${sel ? ' is-selected' : ''}`}
+                onMouseEnter={() => setActiveIdx(i)}
+                onClick={() => sel ? remove(a.id) : add(a.id)}
+              >
+                <span>{a.name} {a.genre && <span className="g">· {a.genre}</span>}</span>
+                {sel && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────
+export default function EventForm({ event, onSubmit, onCancel, artists, venues, onRemoveArtist, onAddArtistToEvent, draft, onDraftChange }: EventFormProps) {
+  const isEditing = !!event;
+
+  // Edit mode uses internal state (always re-initializes from event).
+  // Create mode uses controlled draft from parent so it persists across closes.
+  const [internalForm, setInternalForm] = useState<EventDraft>(emptyEventDraft);
+  const form = isEditing ? internalForm : (draft ?? emptyEventDraft);
 
   useEffect(() => {
     if (event) {
-      setFormData({
+      setInternalForm({
         title: event.title,
         description: event.description,
         date: event.date,
@@ -44,342 +179,220 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
         capacity: event.capacity,
         image: event.image,
         billettoURL: event.billettoURL || '',
-        status: event.status
+        status: event.status,
       });
     }
   }, [event]);
 
-  // Additional effect to refresh when event.eventArtists changes
   useEffect(() => {
-    // Event artists are updated through props
-  }, [event?.eventArtists]);
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onCancel]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const set = useCallback(<K extends keyof EventDraft>(field: K, val: EventDraft[K]) => {
+    if (isEditing) {
+      setInternalForm(f => ({ ...f, [field]: val }));
+    } else {
+      onDraftChange?.({ ...form, [field]: val });
+    }
+  }, [isEditing, form, onDraftChange]);
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     onSubmit({
-      ...formData,
-      artist: formData.artists.join(','),
-      venue: formData.venue,
-      imageUrl: formData.image,
-      billettoURL: formData.billettoURL
+      ...form,
+      artist: form.artists.join(','),
+      venue: form.venue,
+      imageUrl: form.image,
+      billettoURL: form.billettoURL,
     });
-  };
+  }
 
-  const handleAddSelectedArtists = () => {
-    if (formData.artists.length > 0 && event && onAddArtistToEvent) {
-      // Filter out artists that are already in the event
-      const existingArtistIds = event.eventArtists?.map(ea => ea.artist.id) ?? [];
-      const newArtistIds = formData.artists.filter(artistId => !existingArtistIds.includes(artistId));
-      
-      if (newArtistIds.length === 0) {
-        alert('All selected artists are already in this event');
-        setFormData(prev => ({ ...prev, artists: [] }));
-        return;
-      }
-      
-      if (newArtistIds.length < formData.artists.length) {
-        const duplicateCount = formData.artists.length - newArtistIds.length;
-        alert(`${duplicateCount} artist(s) were already in this event and were skipped`);
-      }
-      
-      // Optimistically update the local event state with only new artists
-      const selectedArtists = artists.filter(a => newArtistIds.includes(a.id));
-      
-      // Create optimistic eventArtists entries
-      const optimisticEventArtists = selectedArtists.map(artist => ({
-        id: `temp-${Date.now()}-${artist.id}`, // Temporary ID
-        artist: {
-          id: artist.id,
-          name: artist.name
-        }
-      }));
-      
-      // Update the local event state immediately
-      if (event.eventArtists) {
-        event.eventArtists.push(...optimisticEventArtists);
-      } else {
-        event.eventArtists = optimisticEventArtists;
-      }
-      
-      // Force a re-render by updating the form state
-      setFormData(prev => ({ ...prev }));
-      
-      // Clear the selected artists
-      setFormData(prev => ({ ...prev, artists: [] }));
-      
-      // Add each new artist to the backend
-      newArtistIds.forEach(artistId => {
+  const handleAddArtist = useCallback((artistId: string) => {
+    if (event && onAddArtistToEvent) {
+      const existing = event.eventArtists?.some(ea => ea.artist.id === artistId);
+      if (!existing) {
         onAddArtistToEvent(event.id, artistId);
-      });
-    }
-  };
-
-  const handleRemoveArtist = (eventId: string, artistId: string) => {
-    if (event?.eventArtists && onRemoveArtist) {
-      // Optimistically remove from local state
-      const artistIndex = event.eventArtists.findIndex(ea => ea.artist.id === artistId);
-      if (artistIndex !== -1) {
-        event.eventArtists.splice(artistIndex, 1);
-        // Force re-render
-        setFormData(prev => ({ ...prev }));
       }
-      
-      // Call backend to actually remove
-      onRemoveArtist(eventId, artistId);
     }
-  };
+  }, [event, onAddArtistToEvent]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'price' || name === 'capacity' ? Number(value) : value
-    }));
-  };
+  const handleRemoveArtist = useCallback((artistId: string) => {
+    if (event && onRemoveArtist) {
+      onRemoveArtist(event.id, artistId);
+    }
+  }, [event, onRemoveArtist]);
 
-  const artistOptions = artists.map(artist => ({ value: artist.id, label: artist.name }));
-  const venueOptions = venues.map(venue => ({ value: venue.id, label: venue.name }));
+  const isValid = form.title.trim().length > 0 && form.date.length > 0;
 
-  // Get available artists (not already in the event)
-  const availableArtists = artistOptions.filter(option => {
-    if (!event?.eventArtists) return true;
-    return !event.eventArtists.some(ea => ea.artist.id === option.value);
-  });
+  return (
+    <>
+      <div className="a-scrim" onClick={onCancel} />
+      <div className="a-drawer-shell">
+        <div className="a-drawer-card">
+          {/* Header */}
+          <div className="a-form-head">
+            <div className="a-form-head-l">
+              <button className="a-btn a-btn-ghost a-btn-icon" type="button" onClick={onCancel}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+              <div>
+                <div className="crumb">Events / {isEditing ? 'Edit' : 'New'}</div>
+                <h3>{isEditing ? (event.title || 'Edit event') : 'New event'}</h3>
+              </div>
+            </div>
+            <div className="a-form-head-r">
+              <span className="a-kbd">Esc</span>
+            </div>
+          </div>
 
-  // Get current artists count
-  const currentArtistsCount = event?.eventArtists?.length || 0;
+          {/* Body */}
+          <form className="a-form-body" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div className="a-form-grid">
+              {/* Title */}
+              <div className="a-field full a-field-title">
+                <label>Event title <span className="req">*</span></label>
+                <input
+                  className="a-input"
+                  placeholder="e.g. Olivver — Album Release"
+                  value={form.title}
+                  onChange={e => set('title', e.target.value)}
+                  autoFocus
+                />
+              </div>
 
-  return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]" onClick={onCancel}>
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {event ? 'Edit Event' : 'Add New Event'}
-            </h2>
-            <button
-              onClick={onCancel}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-6 h-6" />
-            </button>
+              {/* Artists */}
+              <div className="a-field full">
+                <label>Artists</label>
+                <ArtistCombobox
+                  value={form.artists}
+                  onChange={ids => set('artists', ids)}
+                  artists={artists}
+                  eventArtists={event?.eventArtists}
+                  onAddArtist={handleAddArtist}
+                  onRemoveArtist={handleRemoveArtist}
+                  isEditing={isEditing}
+                />
+                <span className="hint">Type to filter. Click to add or remove.</span>
+              </div>
+
+              {/* Schedule */}
+              <div className="a-field full">
+                <label>Schedule <span className="req">*</span></label>
+                <div className="a-dt-pair">
+                  <input
+                    type="date"
+                    className="a-input"
+                    value={form.date}
+                    onChange={e => set('date', e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    className="a-input"
+                    value={form.time}
+                    onChange={e => set('time', e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    className="a-input"
+                    placeholder="End"
+                    value={form.endTime}
+                    onChange={e => set('endTime', e.target.value)}
+                  />
+                </div>
+                <span className="hint">Start time — end time is optional.</span>
+              </div>
+
+              {/* Venue */}
+              <div className="a-field">
+                <label>Venue <span className="req">*</span></label>
+                <select
+                  className="a-select"
+                  value={form.venue}
+                  onChange={e => set('venue', e.target.value)}
+                >
+                  <option value="">Select venue…</option>
+                  {venues.map(v => (
+                    <option key={v.id} value={v.id}>{v.name}{v.city ? ` — ${v.city}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status */}
+              <div className="a-field">
+                <label>Status</label>
+                <div className="a-seg">
+                  {(['upcoming', 'ongoing', 'completed', 'cancelled'] as const).map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={form.status === s ? 'is-on' : ''}
+                      onClick={() => set('status', s)}
+                    >{s}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="a-field full">
+                <label>Description</label>
+                <textarea
+                  className="a-textarea"
+                  rows={4}
+                  placeholder="Doors, supports, set times, special notes…"
+                  value={form.description}
+                  onChange={e => set('description', e.target.value)}
+                />
+              </div>
+
+              {/* Image URL */}
+              <div className="a-field full">
+                <label>Poster image URL</label>
+                <input
+                  className="a-input"
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5 }}
+                  placeholder="https://…"
+                  value={form.image}
+                  onChange={e => set('image', e.target.value)}
+                />
+              </div>
+
+              {/* Billetto */}
+              <div className="a-field full">
+                <label>Billetto URL</label>
+                <input
+                  className="a-input"
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5 }}
+                  placeholder="https://billetto.dk/events/…"
+                  value={form.billettoURL}
+                  onChange={e => set('billettoURL', e.target.value)}
+                />
+              </div>
+            </div>
+          </form>
+
+          {/* Footer */}
+          <div className="a-form-foot">
+            <span className="hint">
+              {isEditing ? 'Edit details and save.' : 'Required: title and date.'}
+            </span>
+            <div className="a-form-foot-r">
+              <button type="button" className="a-btn a-btn-ghost" onClick={onCancel}>Cancel</button>
+              <button
+                type="button"
+                className="a-btn a-btn-primary"
+                disabled={!isValid}
+                onClick={handleSubmit as unknown as React.MouseEventHandler}
+              >
+                {isEditing ? 'Save changes' : 'Create event'}
+              </button>
+            </div>
           </div>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Title
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Artists
-              </label>
-              <Select
-                isMulti
-                options={availableArtists}
-                value={artistOptions.filter(option => formData.artists.includes(option.value))}
-                onChange={(selected) => setFormData(prev => ({ ...prev, artists: selected ? selected.map((s: { value: string }) => s.value) : [] }))}
-                classNamePrefix="react-select"
-                placeholder="Select artists..."
-                isClearable
-                noOptionsMessage={() => 
-                  currentArtistsCount === 0 
-                    ? "No artists available" 
-                    : "All available artists are already in this event"
-                }
-              />
-              
-              {/* Add selected artists button */}
-              {event && formData.artists.length > 0 && onAddArtistToEvent && (
-                <div className="mt-2">
-                  <button
-                    type="button"
-                    onClick={handleAddSelectedArtists}
-                    className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                  >
-                    Add Selected Artists to Event
-                  </button>
-                </div>
-              )}
-              
-              {/* Display current artists with remove buttons */}
-              {event && onRemoveArtist && (
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current Artists ({currentArtistsCount})
-                  </label>
-                  {event.eventArtists && event.eventArtists.length > 0 ? (
-                    <div className="space-y-2">
-                      {event.eventArtists.map((eventArtist) => {
-                        const artist = artists.find(a => a.id === eventArtist.artist.id);
-                        return (
-                          <div key={eventArtist.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
-                            <span className="text-sm text-gray-700">{artist?.name || 'Unknown Artist'}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveArtist(event.id, eventArtist.artist.id)}
-                              className="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded hover:bg-red-50"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-                      No artists assigned to this event yet. Use the dropdown above to add artists.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time
-              </label>
-              <input
-                type="time"
-                name="time"
-                value={formData.time}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Time (Optional)
-              </label>
-              <input
-                type="time"
-                name="endTime"
-                value={formData.endTime || ''}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Venue
-              </label>
-              <Select
-                name="venue"
-                options={venueOptions}
-                value={venueOptions.find(option => option.value === formData.venue) ?? null}
-                onChange={(selected) => setFormData(prev => ({ ...prev, venue: selected ? (selected as { value: string }).value : '' }))}
-                classNamePrefix="react-select"
-                placeholder="Select venue..."
-                isClearable
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="upcoming">Upcoming</option>
-                <option value="ongoing">Ongoing</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              required
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Image URL
-            </label>
-            <input
-              type="url"
-              name="image"
-              value={formData.image}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Billetto URL
-            </label>
-            <input
-              type="url"
-              name="billettoURL"
-              value={formData.billettoURL}
-              onChange={handleChange}
-              placeholder="https://billetto.dk/events/..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              {event ? 'Update Event' : 'Create Event'}
-            </button>
-          </div>
-        </form>
       </div>
-    </div>,
-    document.body
+    </>
   );
-} 
+}

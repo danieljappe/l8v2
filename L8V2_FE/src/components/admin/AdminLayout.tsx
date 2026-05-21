@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Sidebar from './Sidebar';
 import type { AdminSection } from '../../types/admin';
 import type { AuthUser } from '../../hooks/useAuth';
@@ -12,32 +12,28 @@ interface AdminLayoutProps {
   user?: AuthUser | null;
 }
 
-export default function AdminLayout({ 
-  activeSection, 
-  onSectionChange, 
-  children, 
+export default function AdminLayout({
+  activeSection,
+  onSectionChange,
+  children,
   unreadMessages,
   onLogout,
-  user = null
+  user = null,
 }: AdminLayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
   return (
-    <div className="flex h-full w-full bg-gray-50">
-      <Sidebar
-        activeSection={activeSection}
-        onSectionChange={onSectionChange}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        unreadMessages={unreadMessages}
-        onLogout={onLogout}
-        user={user}
-      />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6">
+    <div className="admin-root" style={{ minHeight: '100vh' }}>
+      <div className="a-shell">
+        <Sidebar
+          activeSection={activeSection}
+          onSectionChange={onSectionChange}
+          unreadMessages={unreadMessages}
+          onLogout={onLogout}
+          user={user}
+        />
+        <main className="a-main">
           {children}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
-} 
+}

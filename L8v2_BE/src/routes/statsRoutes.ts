@@ -10,9 +10,9 @@ const router = Router();
  *
  * Indexes used:
  *   eventCount        — COUNT(*) on event (PK scan)
- *   venueCount        — COUNT(DISTINCT "venueId") uses IDX_event_venue
+ *   venueCount        — COUNT(*) on venue (PK scan) — counts all registered venues
  *   bookableArtistCount — COUNT(*) uses IDX_artist_isBookable partial index
- *   genreCount        — small table, fast
+ *   genreCount        — IDX_artist_isBookable partial index
  *   totalEventArtists — COUNT(*) on event_artist (PK scan)
  */
 const getStats: RequestHandler = async (_req, res) => {
@@ -25,7 +25,7 @@ const getStats: RequestHandler = async (_req, res) => {
       [{ totalEventArtists }]
     ] = await Promise.all([
       AppDataSource.query(`SELECT COUNT(*)::int AS "eventCount" FROM event`),
-      AppDataSource.query(`SELECT COUNT(DISTINCT "venueId")::int AS "venueCount" FROM event WHERE "venueId" IS NOT NULL`),
+      AppDataSource.query(`SELECT COUNT(*)::int AS "venueCount" FROM venue`),
       AppDataSource.query(`SELECT COUNT(*)::int AS "bookableArtistCount" FROM artist WHERE "isBookable" = true`),
       AppDataSource.query(`SELECT COUNT(DISTINCT genre)::int AS "genreCount" FROM artist WHERE "isBookable" = true AND genre IS NOT NULL`),
       AppDataSource.query(`SELECT COUNT(*)::int AS "totalEventArtists" FROM event_artist`)

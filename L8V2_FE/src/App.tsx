@@ -21,6 +21,12 @@ import CookieConsentBanner from './components/CookieConsentBanner';
 import GoogleAnalyticsLoader from './components/GoogleAnalyticsLoader';
 import { AuthProvider } from './contexts/AuthContext';
 
+function CookieSettingsButtonGuard() {
+  const { pathname } = useLocation();
+  if (pathname.startsWith('/admin')) return null;
+  return <CookieSettingsButton />;
+}
+
 function PrivateRoute({ children }: { children: JSX.Element }) {
   const { isAuthenticated, loading } = useAuth();
   
@@ -84,7 +90,7 @@ const App = () => {
           <ScrollToTop />
           <AppContent />
           <GoogleAnalyticsLoader />
-          <CookieSettingsButton />
+          <CookieSettingsButtonGuard />
           <CookieConsentBanner />
         </PlatformRouter>
       </AuthProvider>

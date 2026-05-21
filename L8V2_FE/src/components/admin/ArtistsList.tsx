@@ -1,7 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit, Trash2, Globe, Music, Calendar } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import type { Artist } from '../../types/admin';
-import ArtistFormModal from './ArtistFormModal';
+import ArtistFormModal, { emptyArtistDraft } from './ArtistFormModal';
 
 interface ArtistsListProps {
   artists: Artist[];
@@ -10,248 +9,306 @@ interface ArtistsListProps {
   onDeleteArtist: (id: string) => void;
 }
 
-export default function ArtistsList({
-  artists,
-  onAddArtist,
-  onUpdateArtist,
-  onDeleteArtist
-}: ArtistsListProps) {
-  const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+type ViewMode = 'grid' | 'rows' | 'table';
+type SortCol = 'name' | 'genre' | 'bookable';
 
-  // Sort artists: bookable first, then by name
-  const sortedArtists = useMemo(() => {
-    return [...artists].sort((a, b) => {
-      // First sort by isBookable (true first)
-      if (a.isBookable !== b.isBookable) {
-        return b.isBookable ? 1 : -1;
-      }
-      // Then sort alphabetically by name
-      return a.name.localeCompare(b.name);
+function colorFromName(name: string): string {
+  if (!name) return 'oklch(0.55 0.05 250)';
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  const hue = ((h % 360) + 360) % 360;
+  return `oklch(0.55 0.14 ${hue})`;
+}
+
+function monogram(name: string): string {
+  if (!name) return '·';
+  const parts = name.trim().split(/\s+/);
+  return parts.length === 1 ? parts[0][0].toUpperCase() : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+export default function ArtistsList({ artists, onAddArtist, onUpdateArtist, onDeleteArtist }: ArtistsListProps) {
+  const [view, setView] = useState<ViewMode>('grid');
+  const [q, setQ] = useState('');
+  const [bookFilter, setBookFilter] = useState('all');
+  const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({ col: 'name', dir: 'asc' });
+  const [editing, setEditing] = useState<Artist | null | 'new'>(null);
+  const [confirmDel, setConfirmDel] = useState<Artist | null>(null);
+  const [newArtistDraft, setNewArtistDraft] = useState(emptyArtistDraft);
+
+  function handleSort(col: SortCol) {
+    setSort(s => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
+  }
+
+  const filtered = useMemo(() => {
+    let list = artists;
+    if (q.trim()) {
+      const lq = q.toLowerCase();
+      list = list.filter(a =>
+        a.name.toLowerCase().includes(lq) ||
+        (a.genre || '').toLowerCase().includes(lq) ||
+        (a.bio || '').toLowerCase().includes(lq)
+      );
+    }
+    if (bookFilter === 'bookable') list = list.filter(a => a.isBookable);
+    if (bookFilter === 'off-roster') list = list.filter(a => !a.isBookable);
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => {
+      if (sort.col === 'genre') return (a.genre || '').localeCompare(b.genre || '') * dir;
+      if (sort.col === 'bookable') return (Number(a.isBookable) - Number(b.isBookable)) * dir;
+      return a.name.localeCompare(b.name) * dir;
     });
-  }, [artists]);
+  }, [artists, q, bookFilter, sort]);
 
-  // Update selectedArtist if the artist data changes
-  useEffect(() => {
-    if (selectedArtist && !isCreating) {
-      const updatedArtist = artists.find(artist => artist.id === selectedArtist.id);
-      if (updatedArtist) {
-        setSelectedArtist(updatedArtist);
-      }
+  const counts = useMemo(() => ({
+    all: artists.length,
+    bookable: artists.filter(a => a.isBookable).length,
+    'off-roster': artists.filter(a => !a.isBookable).length,
+  }), [artists]);
+
+  function handleSave(saved: Artist) {
+    if (editing === 'new') {
+      onAddArtist(saved);
+      setNewArtistDraft(emptyArtistDraft);
+    } else if (editing) {
+      onUpdateArtist(saved);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [artists, selectedArtist?.id, isCreating]);
+    setEditing(null);
+  }
 
-  const handleEdit = (artist: Artist) => {
-    setSelectedArtist(artist);
-    setIsCreating(false);
-  };
+  const editingArtist: Artist | null = editing === 'new' ? null : (editing ?? null);
 
-  const handleCreate = () => {
-    setSelectedArtist(null);
-    setIsCreating(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this artist?')) {
-      onDeleteArtist(id);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setSelectedArtist(null);
-    setIsCreating(false);
-  };
+  const IcEdit = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>
+    </svg>
+  );
+  const IcTrash = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    </svg>
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Artists Management</h1>
-          <p className="text-gray-600">Manage all your artists and performers.</p>
-        </div>
-        <button
-          onClick={handleCreate}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Artist</span>
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Artist
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Genre
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Media & Links
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Updated
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedArtists.map((artist) => (
-                <tr key={artist.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center overflow-hidden">
-                        {artist.imageUrl ? (
-                          <img 
-                            src={artist.imageUrl} 
-                            alt={artist.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              const fallback = e.currentTarget.nextElementSibling;
-                              if (fallback) {
-                                (fallback as HTMLElement).style.display = 'flex';
-                              }
-                            }}
-                          />
-                        ) : null}
-                        <div 
-                          className={`w-full h-full bg-gradient-to-br from-l8-blue to-l8-blue-light flex items-center justify-center ${artist.imageUrl ? 'hidden' : ''}`}
-                        >
-                          <span className="text-white text-sm font-bold">
-                            {artist.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                          {artist.name}
-                          {artist.isBookable && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              Bookable
-                            </span>
-                          )}
-                        </div>
-                        {artist.bio && (
-                          <div className="text-sm text-gray-500 line-clamp-1 max-w-md">
-                            {artist.bio}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {artist.genre ? (
-                      <div className="flex items-center">
-                        <Music className="w-4 h-4 text-gray-400 mr-1" />
-                        <span className="text-sm text-gray-900">{artist.genre}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                      Active
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-3 text-sm text-gray-500">
-                      {artist.socialMedia && Array.isArray(artist.socialMedia) && artist.socialMedia.length > 0 && (
-                        <div className="flex items-center space-x-1">
-                          <span>📱</span>
-                          <span>{artist.socialMedia.length}</span>
-                        </div>
-                      )}
-                      {artist.embeddings && artist.embeddings.length > 0 && (
-                        <div className="flex items-center space-x-1">
-                          <span>🎵</span>
-                          <span>{artist.embeddings.length}</span>
-                        </div>
-                      )}
-                      {artist.website && (
-                        <div className="flex items-center space-x-1">
-                          <Globe className="w-4 h-4 text-blue-500" />
-                        </div>
-                      )}
-                      {!artist.socialMedia?.length && !artist.embeddings?.length && !artist.website && (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">
-                      {artist.updatedAt ? new Date(artist.updatedAt).toLocaleDateString() : 'Unknown'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(artist)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Edit Artist"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(artist.id)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete Artist"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Empty State */}
-      {sortedArtists.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <div className="w-16 h-16 bg-gradient-to-br from-l8-beige-light to-l8-beige rounded-full flex items-center justify-center mx-auto mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-l8-blue to-l8-blue-dark rounded-full flex items-center justify-center">
-              <span className="text-white text-xl">👨‍🎤</span>
+    <div>
+      <div className="a-topbar">
+        <div className="a-topbar-head">
+          <div>
+            <h2>Artists</h2>
+            <div className="a-topbar-sub">
+              {counts.all} on roster · {counts.bookable} bookable · {counts['off-roster']} off-roster
             </div>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Artists Yet</h3>
-          <p className="text-gray-500 mb-6">Get started by adding your first artist to the roster</p>
-          <button
-            onClick={handleCreate}
-            className="inline-flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Your First Artist</span>
-          </button>
+          <div className="a-topbar-actions">
+            <button className="a-btn a-btn-primary" onClick={() => setEditing('new')}>
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              New artist
+            </button>
+          </div>
         </div>
+
+        <div className="a-toolbar">
+          <div className="a-search">
+            <svg className="a-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+              <circle cx={11} cy={11} r={7}/><path d="m20 20-3.5-3.5"/>
+            </svg>
+            <input placeholder="Search artists, genre, bio…" value={q} onChange={e => setQ(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(['all', 'bookable', 'off-roster'] as const).map(s => (
+              <button key={s} className={`a-chip${bookFilter === s ? ' is-on' : ''}`} onClick={() => setBookFilter(s)}>
+                {s === 'all' ? 'All' : s[0].toUpperCase() + s.slice(1)}
+                <span className="ct">{counts[s]}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: 'var(--ink-3)', fontSize: 12 }}>View</span>
+            <div className="a-viewswitch">
+              {([
+                { id: 'grid' as const, icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><rect x={3} y={3} width={7} height={7} rx={1}/><rect x={14} y={3} width={7} height={7} rx={1}/><rect x={3} y={14} width={7} height={7} rx={1}/><rect x={14} y={14} width={7} height={7} rx={1}/></svg> },
+                { id: 'rows' as const, icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> },
+                { id: 'table' as const, icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><rect x={3} y={3} width={18} height={18} rx={2}/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg> },
+              ]).map(v => (
+                <button key={v.id} className={view === v.id ? 'is-on' : ''} onClick={() => setView(v.id)}>
+                  {v.icon}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="a-body">
+        {filtered.length === 0 && (
+          <div style={{ padding: 60, textAlign: 'center', color: 'var(--ink-3)' }}>No artists found</div>
+        )}
+
+        {/* GRID */}
+        {view === 'grid' && filtered.length > 0 && (
+          <div className="a-art-grid">
+            {filtered.map(a => {
+              const bg = colorFromName(a.name);
+              const mono = monogram(a.name);
+              return (
+                <div key={a.id} className="a-art-card" onClick={() => setEditing(a)}>
+                  <div className="a-art-photo" style={{ '--photo-bg': bg } as React.CSSProperties}>
+                    {a.imageUrl ? <img src={a.imageUrl} alt={a.name} /> : mono}
+                    <div className={`book-badge${a.isBookable ? '' : ' off'}`}>
+                      <span className="dot" />
+                      {a.isBookable ? 'Bookable' : 'Off-roster'}
+                    </div>
+                  </div>
+                  <div className="a-art-body">
+                    <h3 className="a-art-name">{a.name}</h3>
+                    {a.genre && <p className="a-art-genre">{a.genre}</p>}
+                    {a.bio && <p style={{ fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.5, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{a.bio}</p>}
+                  </div>
+                  <div className="a-art-foot">
+                    <span className="stat">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><rect x={3} y={5} width={18} height={16} rx={2}/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                      {a.isBookable ? 'Available' : 'Not bookable'}
+                    </span>
+                    <div style={{ display: 'flex', gap: 3 }} onClick={e => e.stopPropagation()}>
+                      <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm" onClick={() => setEditing(a)}><IcEdit /></button>
+                      <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm a-btn-danger" onClick={() => setConfirmDel(a)}><IcTrash /></button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ROWS */}
+        {view === 'rows' && filtered.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filtered.map(a => {
+              const bg = colorFromName(a.name);
+              const mono = monogram(a.name);
+              return (
+                <div key={a.id} className="a-art-row" onClick={() => setEditing(a)} style={{ cursor: 'pointer' }}>
+                  <div className="a-art-row-photo" style={{ '--photo-bg': bg } as React.CSSProperties}>
+                    {a.imageUrl ? <img src={a.imageUrl} alt={a.name} /> : mono}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p className="a-art-row-name">{a.name}</p>
+                    <div className="a-art-row-meta">
+                      {a.genre && <span>{a.genre}</span>}
+                      <span className={`a-pill ${a.isBookable ? 'a-pill-upcoming' : 'a-pill-draft'}`}>
+                        {a.isBookable ? 'Bookable' : 'Off-roster'}
+                      </span>
+                    </div>
+                    {a.bio && <p className="a-art-row-bio">{a.bio}</p>}
+                  </div>
+                  <div className="a-art-row-stats">
+                    {a.bookingUser && (
+                      <span className="stat">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={8} r={4}/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                        <span>Manager:</span> <span className="num">{[a.bookingUser.firstName, a.bookingUser.lastName].filter(Boolean).join(' ') || a.bookingUser.email}</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="a-art-row-side" onClick={e => e.stopPropagation()}>
+                    <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm" onClick={() => setEditing(a)}><IcEdit /></button>
+                    <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm a-btn-danger" onClick={() => setConfirmDel(a)}><IcTrash /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* TABLE */}
+        {view === 'table' && filtered.length > 0 && (
+          <div className="a-tbl-wrap">
+            <table className="a-tbl">
+              <thead>
+                <tr>
+                  <th onClick={() => handleSort('name')} style={{ paddingLeft: 60 }}>
+                    Artist {sort.col === 'name' && <span>{sort.dir === 'asc' ? '↑' : '↓'}</span>}
+                  </th>
+                  <th onClick={() => handleSort('genre')}>Genre</th>
+                  <th onClick={() => handleSort('bookable')}>Status</th>
+                  <th>Manager</th>
+                  <th className="a-actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(a => {
+                  const bg = colorFromName(a.name);
+                  const mono = monogram(a.name);
+                  return (
+                    <tr key={a.id} style={{ cursor: 'pointer' }} onClick={() => setEditing(a)}>
+                      <td style={{ paddingLeft: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 16 }}>
+                          <div className="a-art-mono" style={{ '--photo-bg': bg } as React.CSSProperties}>
+                            {a.imageUrl ? <img src={a.imageUrl} alt={a.name} /> : mono}
+                          </div>
+                          <div className="ev-title">{a.name}</div>
+                        </div>
+                      </td>
+                      <td style={{ color: 'var(--ink-2)', fontSize: 13 }}>{a.genre || '—'}</td>
+                      <td><span className={`a-pill ${a.isBookable ? 'a-pill-upcoming' : 'a-pill-draft'}`}>{a.isBookable ? 'Bookable' : 'Off-roster'}</span></td>
+                      <td style={{ fontSize: 13, color: 'var(--ink-2)' }}>
+                        {a.bookingUser ? [a.bookingUser.firstName, a.bookingUser.lastName].filter(Boolean).join(' ') || a.bookingUser.email : '—'}
+                      </td>
+                      <td className="a-actions" onClick={e => e.stopPropagation()}>
+                        <button className="a-btn a-btn-ghost a-btn-icon" onClick={() => setEditing(a)}><IcEdit /></button>
+                        <button className="a-btn a-btn-ghost a-btn-icon a-btn-danger" onClick={() => setConfirmDel(a)}><IcTrash /></button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Artist form modal */}
+      {editing !== null && (
+        <ArtistFormModal
+          artist={editingArtist}
+          onClose={() => setEditing(null)}
+          onSave={handleSave}
+          draft={editing === 'new' ? newArtistDraft : undefined}
+          onDraftChange={editing === 'new' ? setNewArtistDraft : undefined}
+        />
       )}
 
-      {/* Artist Form Modal for editing/creating */}
-      {(selectedArtist ?? isCreating) && (
-        <ArtistFormModal
-          artist={selectedArtist}
-          onClose={handleCloseModal}
-          onSave={(artist) => {
-            if (selectedArtist) {
-              onUpdateArtist(artist);
-            } else {
-              onAddArtist(artist);
-            }
-          }}
-        />
+      {/* Confirm delete */}
+      {confirmDel && (
+        <>
+          <div className="a-scrim" onClick={() => setConfirmDel(null)} />
+          <div className="a-modal-shell">
+            <div className="a-modal-card" style={{ maxWidth: 460 }}>
+              <div className="a-form-head">
+                <div className="a-form-head-l">
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--ink-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 4 }}>Confirm</div>
+                    <h3>Remove artist?</h3>
+                  </div>
+                </div>
+              </div>
+              <div className="a-form-body">
+                <p style={{ margin: 0, color: 'var(--ink-2)' }}>
+                  Remove <strong style={{ color: 'var(--ink)' }}>"{confirmDel.name}"</strong> from the roster.
+                  Past events featuring this artist are kept.
+                </p>
+              </div>
+              <div className="a-form-foot">
+                <span />
+                <div className="a-form-foot-r">
+                  <button className="a-btn a-btn-ghost" onClick={() => setConfirmDel(null)}>Cancel</button>
+                  <button className="a-btn" style={{ background: 'var(--danger)', borderColor: 'var(--danger)', color: 'white' }}
+                    onClick={() => { onDeleteArtist(confirmDel.id); setConfirmDel(null); }}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

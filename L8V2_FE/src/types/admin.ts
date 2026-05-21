@@ -24,6 +24,7 @@ export interface Event {
   ticketPrice?: number;
   totalTickets?: number;
   soldTickets?: number;
+  maxCapacity?: number;
   isActive?: boolean;
   currentAttendees?: number;
   startTime?: string;
@@ -107,7 +108,10 @@ export interface Message {
   message: string;
   read: boolean;
   priority: 'low' | 'medium' | 'high';
+  status?: 'pending' | 'read' | 'replied' | 'archived';
+  phone?: string;
+  artistType?: string;
   createdAt: string;
 }
 
-export type AdminSection = 'dashboard' | 'events' | 'artists' | 'venues' | 'gallery' | 'messages' | 'account';
+export type AdminSection = 'dashboard' | 'events' | 'artists' | 'venues' | 'gallery' | 'messages' | 'users' | 'account';
