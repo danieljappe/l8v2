@@ -21,17 +21,32 @@ export class BillettoService {
     this.apiClient = new BillettoApiClient();
   }
 
-  // Tries to find a local Event whose title appears as a substring of the Billetto event name (case-insensitive).
-  // e.g. local "CHROME! & SKOMAGER" matches Billetto "Chrome! & Skomager (forårstour 2026...) - Hosted af L8"
+  // Three-tier matching strategy (case-insensitive):
+  // 1. Local title is substring of Billetto name  → "CHROME! & SKOMAGER" in "Chrome! & Skomager (forårstour...)"
+  // 2. Billetto name is substring of local title  → catches short Billetto names
+  // 3. First significant word (≥5 chars) of local title appears in Billetto name
+  //    → "skomager" in "SKOMAGER - KÆRLIGHED & KAOS..." matches "Skomager Listening Event"
   private async matchLocalEvent(billettoEvent: BillettoApiEvent): Promise<Event | null> {
     const name = billettoEvent.name;
     if (!name) return null;
 
     const allEvents = await this.eventRepo.find({ select: ['id', 'title'] });
-    const lowerName = name.toLowerCase();
+    const lowerBilletto = name.toLowerCase();
 
-    const match = allEvents.find(e => lowerName.includes(e.title.toLowerCase()));
-    return match ?? null;
+    // Tier 1: local title contained in Billetto name
+    const tier1 = allEvents.find(e => lowerBilletto.includes(e.title.toLowerCase()));
+    if (tier1) return tier1;
+
+    // Tier 2: Billetto name contained in local title
+    const tier2 = allEvents.find(e => e.title.toLowerCase().includes(lowerBilletto));
+    if (tier2) return tier2;
+
+    // Tier 3: first significant word (≥5 chars) of local title appears in Billetto name
+    const tier3 = allEvents.find(e => {
+      const firstWord = e.title.toLowerCase().split(/[\s\-&,!x+()]+/).find(w => w.length >= 5);
+      return firstWord ? lowerBilletto.includes(firstWord) : false;
+    });
+    return tier3 ?? null;
   }
 
   private async upsertOne(billettoEvent: BillettoApiEvent, localEvent: Event | null): Promise<void> {
@@ -39,11 +54,13 @@ export class BillettoService {
     const publicUrl = BillettoApiClient.extractPublicUrl(billettoEvent);
     const maxCapacity = BillettoApiClient.extractCapacity(billettoEvent);
     const ticketsAvailable = BillettoApiClient.extractTicketsAvailable(billettoEvent);
+    const eventName = billettoEvent.name ?? undefined;
 
     let record = await this.repo.findByBillettoEventId(billettoEventId);
 
     if (record) {
       record.publicUrl = publicUrl || record.publicUrl;
+      record.eventName = eventName;
       record.maxCapacity = maxCapacity;
       record.ticketsAvailable = ticketsAvailable;
       record.lastSyncedAt = new Date();
@@ -55,6 +72,7 @@ export class BillettoService {
       const newRecord = new BillettoEventData();
       newRecord.billettoEventId = billettoEventId;
       newRecord.publicUrl = publicUrl;
+      newRecord.eventName = eventName;
       newRecord.maxCapacity = maxCapacity;
       newRecord.ticketsAvailable = ticketsAvailable;
       newRecord.lastSyncedAt = new Date();

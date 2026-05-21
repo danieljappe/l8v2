@@ -16,6 +16,9 @@ export class BillettoEventData {
   @Column({ unique: true })
   billettoEventId!: string;
 
+  @Column({ nullable: true })
+  eventName?: string;
+
   @Column()
   publicUrl!: string;
 
