@@ -21,32 +21,39 @@ export class BillettoService {
     this.apiClient = new BillettoApiClient();
   }
 
-  // Three-tier matching strategy (case-insensitive):
-  // 1. Local title is substring of Billetto name  → "CHROME! & SKOMAGER" in "Chrome! & Skomager (forårstour...)"
-  // 2. Billetto name is substring of local title  → catches short Billetto names
-  // 3. First significant word (≥5 chars) of local title appears in Billetto name
-  //    → "skomager" in "SKOMAGER - KÆRLIGHED & KAOS..." matches "Skomager Listening Event"
+  // Extract the numeric Billetto event ID from a billettoURL.
+  // e.g. "https://billetto.dk/e/chrome-skomager-...-1779694" → "1779694"
+  private static extractIdFromUrl(url: string): string | null {
+    return /(\d+)\/?$/.exec(url)?.[1] ?? null;
+  }
+
+  // Primary: match by Billetto event ID extracted from the event's billettoURL (reliable, explicit).
+  // Fallback: name-based heuristics for events that don't have billettoURL set yet.
   private async matchLocalEvent(billettoEvent: BillettoApiEvent): Promise<Event | null> {
+    const billettoId = String(billettoEvent.id);
+    const allEvents = await this.eventRepo.find({ select: ['id', 'title', 'billettoURL'] });
+
+    // Primary: ID from billettoURL — exact, no ambiguity
+    const idMatch = allEvents.find(e => {
+      const extracted = e.billettoURL ? BillettoService.extractIdFromUrl(e.billettoURL) : null;
+      return extracted === billettoId;
+    });
+    if (idMatch) return idMatch;
+
+    // Fallback: name matching for events without billettoURL set
     const name = billettoEvent.name;
     if (!name) return null;
-
-    const allEvents = await this.eventRepo.find({ select: ['id', 'title'] });
     const lowerBilletto = name.toLowerCase();
 
-    // Tier 1: local title contained in Billetto name
-    const tier1 = allEvents.find(e => lowerBilletto.includes(e.title.toLowerCase()));
-    if (tier1) return tier1;
+    const nameMatch =
+      allEvents.find(e => lowerBilletto.includes(e.title.toLowerCase())) ??
+      allEvents.find(e => e.title.toLowerCase().includes(lowerBilletto)) ??
+      allEvents.find(e => {
+        const firstWord = e.title.toLowerCase().split(/[\s\-&,!x+()]+/).find(w => w.length >= 5);
+        return firstWord ? lowerBilletto.includes(firstWord) : false;
+      }) ?? null;
 
-    // Tier 2: Billetto name contained in local title
-    const tier2 = allEvents.find(e => e.title.toLowerCase().includes(lowerBilletto));
-    if (tier2) return tier2;
-
-    // Tier 3: first significant word (≥5 chars) of local title appears in Billetto name
-    const tier3 = allEvents.find(e => {
-      const firstWord = e.title.toLowerCase().split(/[\s\-&,!x+()]+/).find(w => w.length >= 5);
-      return firstWord ? lowerBilletto.includes(firstWord) : false;
-    });
-    return tier3 ?? null;
+    return nameMatch;
   }
 
   private async upsertOne(billettoEvent: BillettoApiEvent, localEvent: Event | null): Promise<void> {
@@ -80,13 +87,18 @@ export class BillettoService {
       await this.repo.save(newRecord);
     }
 
-    // Keep event row in sync so dashboard doesn't need to join billetto_event_data
+    // Keep event row in sync so dashboard doesn't need to join billetto_event_data.
+    // Also backfill billettoURL if missing — so future syncs use ID matching instead of name matching.
     const linkedEventId = localEvent?.id ?? record?.eventId;
-    if (linkedEventId && maxCapacity != null) {
-      const soldTickets = ticketsAvailable != null ? maxCapacity - ticketsAvailable : undefined;
+    if (linkedEventId) {
+      const soldTickets = (maxCapacity != null && ticketsAvailable != null)
+        ? maxCapacity - ticketsAvailable
+        : undefined;
+      const urlMissing = localEvent && !localEvent.billettoURL && publicUrl;
       await this.eventRepo.update(linkedEventId, {
-        maxCapacity,
+        ...(maxCapacity != null ? { maxCapacity } : {}),
         ...(soldTickets != null ? { soldTickets } : {}),
+        ...(urlMissing ? { billettoURL: publicUrl } : {}),
       });
     }
   }
