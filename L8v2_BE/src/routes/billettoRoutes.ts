@@ -113,10 +113,15 @@ const handleWebhook: RequestHandler = async (req, res) => {
   // Acknowledge immediately so Billetto doesn't retry
   res.status(200).json({ received: true });
 
-  // Process asynchronously after responding
-  getService().handleWebhook(req.body).catch((err) => {
-    console.error('[Billetto Webhook] Processing error:', err);
-  });
+  // Process asynchronously after responding.
+  // Wrap in Promise.resolve().then() so a synchronous throw from getService()
+  // (e.g. missing BILLETTO_API_KEY in non-prod environments) is caught rather
+  // than becoming an unhandled rejection.
+  Promise.resolve()
+    .then(() => getService().handleWebhook(req.body))
+    .catch((err) => {
+      console.error('[Billetto Webhook] Processing error:', err);
+    });
 };
 
 router.get('/events', authenticateJWT, listEvents);
