@@ -6,10 +6,6 @@ import { authenticateJWT } from '../middleware/authMiddleware';
 const router = Router();
 const venueRepository = AppDataSource.getRepository(Venue);
 
-interface VenueParams {
-  id: string;
-}
-
 /**
  * @swagger
  * tags:
@@ -101,7 +97,7 @@ const getAllVenues: RequestHandler = async (_req, res) => {
       relations: ['events']
     });
     res.json(venues);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching venues' });
   }
 };
@@ -118,7 +114,7 @@ const getVenueById: RequestHandler = async (req, res) => {
       return;
     }
     res.json(venue);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching venue' });
   }
 };
@@ -129,7 +125,7 @@ const createVenue: RequestHandler = async (req, res) => {
     const venue = venueRepository.create(req.body);
     const result = await venueRepository.save(venue);
     res.status(201).json(result);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error creating venue' });
   }
 };
@@ -148,7 +144,7 @@ const updateVenue: RequestHandler = async (req, res) => {
     venueRepository.merge(venue, req.body);
     const result = await venueRepository.save(venue);
     res.json(result);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error updating venue' });
   }
 };
@@ -166,7 +162,7 @@ const deleteVenue: RequestHandler = async (req, res) => {
     }
     await venueRepository.remove(venue);
     res.status(204).send();
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error deleting venue' });
   }
 };

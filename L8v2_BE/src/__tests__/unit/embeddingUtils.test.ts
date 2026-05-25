@@ -65,8 +65,6 @@ describe('validateAndSanitizeEmbedding', () => {
     });
 
     it('rejects when src exists but is not a spotify embed URL', () => {
-      const badSrc =
-        '<iframe src="https://open.spotify.com/embed/track/abc123" data-tampered="true"></iframe>';
       // src matches, but we force the URL check to fail by using a non-embed path
       const forgedSrc =
         '<iframe src="https://open.spotify.com/track/abc123" frameborder="0"></iframe>';

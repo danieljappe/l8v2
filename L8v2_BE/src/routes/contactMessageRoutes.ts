@@ -128,7 +128,7 @@ const getAllContactMessages: RequestHandler = async (_req, res) => {
   try {
     const contactMessages = await contactMessageRepository.find();
     res.json(contactMessages);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching contact messages' });
   }
 };
@@ -144,7 +144,7 @@ const getContactMessageById: RequestHandler = async (req, res) => {
       return;
     }
     res.json(contactMessage);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching contact message' });
   }
 };
@@ -254,7 +254,7 @@ const createContactMessage: RequestHandler = async (req, res) => {
     
     const result = await contactMessageRepository.save(contactMessage);
     res.status(201).json(result);
-  } catch (error) {
+  } catch {
     console.error('Error creating contact message:', error);
     res.status(500).json({ 
       message: 'Error creating contact message',
@@ -276,7 +276,7 @@ const updateContactMessage: RequestHandler = async (req, res) => {
     contactMessageRepository.merge(contactMessage, req.body);
     const result = await contactMessageRepository.save(contactMessage);
     res.json(result);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error updating contact message' });
   }
 };
@@ -293,7 +293,7 @@ const deleteContactMessage: RequestHandler = async (req, res) => {
     }
     await contactMessageRepository.remove(contactMessage);
     res.status(204).send();
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error deleting contact message' });
   }
 };

@@ -122,11 +122,11 @@ function validateSoundCloudEmbed(embedCode: string): EmbeddingValidationResult {
   if (encodedUrl) {
     try {
       const decodedUrl = decodeURIComponent(encodedUrl);
-      const trackMatch = decodedUrl.match(/soundcloud\.com\/([^\/]+)\/([^\/\?]+)/);
+      const trackMatch = decodedUrl.match(/soundcloud\.com\/([^/]+)\/([^/?]+)/);
       if (trackMatch) {
         title = `SoundCloud: ${trackMatch[2].replace(/-/g, ' ')}`;
       }
-    } catch (e) {
+    } catch {
       // If decoding fails, use default title
     }
   }
@@ -174,7 +174,7 @@ function generateEmbeddingId(): string {
  */
 export function sanitizeEmbedCode(embedCode: string): string {
   // Remove any script tags and potentially dangerous attributes
-  let sanitized = embedCode
+  const sanitized = embedCode
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers
     .replace(/javascript:/gi, '') // Remove javascript: protocols

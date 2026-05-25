@@ -28,6 +28,8 @@ export class BaseRepository<T extends ObjectLiteral> {
   }
 
   async update(id: string, data: DeepPartial<T>): Promise<T | null> {
+    // TypeORM update() requires QueryDeepPartialEntity which differs from DeepPartial
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await this.repository.update(id, data as any);
     return this.findById(id);
   }

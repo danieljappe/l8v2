@@ -4,7 +4,7 @@ export const errorHandler = (
   err: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   // Enhanced error logging
   console.error('🚨 ERROR OCCURRED:');
@@ -20,7 +20,7 @@ export const errorHandler = (
   console.error('─'.repeat(80));
 
   // Send appropriate error response
-  const statusCode = (err as any).statusCode || 500;
+  const statusCode = (err as { statusCode?: number }).statusCode ?? 500;
   const errorMessage = process.env.NODE_ENV === 'production' 
     ? 'Internal Server Error' 
     : err.message;

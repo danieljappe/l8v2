@@ -1,6 +1,6 @@
 import { GalleryImage, GalleryCategory } from '../models/GalleryImage';
 import { BaseRepository } from './BaseRepository';
-import { FindOptionsWhere, Between } from 'typeorm';
+import { Between } from 'typeorm';
 
 export class GalleryImageRepository extends BaseRepository<GalleryImage> {
   constructor() {

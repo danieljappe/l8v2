@@ -1,4 +1,4 @@
-import { Router, Request, Response, RequestHandler } from 'express';
+import { Router, Response, RequestHandler } from 'express';
 import { AppDataSource } from '../config/database';
 import { User } from '../models/User';
 import { authenticateJWT, AuthRequest } from '../middleware/authMiddleware';
@@ -8,9 +8,6 @@ import bcrypt from 'bcryptjs';
 const router = Router();
 const userRepository = AppDataSource.getRepository(User);
 
-interface UserParams {
-  id: string;
-}
 
 /**
  * @swagger
@@ -129,7 +126,7 @@ const getAllUsers: RequestHandler = async (_req, res) => {
   try {
     const users = await userRepository.find();
     res.json(users);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching users' });
   }
 };
@@ -143,7 +140,7 @@ const getUserById: RequestHandler = async (req, res) => {
       return;
     }
     res.json(user);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching user' });
   }
 };
@@ -171,7 +168,7 @@ const createUser: RequestHandler = async (req, res) => {
     });
     const result = await userRepository.save(user);
     res.status(201).json(result);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error creating user' });
   }
 };
@@ -191,7 +188,7 @@ const updateUser: RequestHandler = async (req, res) => {
     userRepository.merge(user, updates);
     const result = await userRepository.save(user);
     res.json(result);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error updating user' });
   }
 };
@@ -206,7 +203,7 @@ const deleteUser: RequestHandler = async (req, res) => {
     }
     await userRepository.remove(user);
     res.status(204).send();
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error deleting user' });
   }
 };
@@ -242,7 +239,7 @@ const loginUser: RequestHandler = async (req, res) => {
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error logging in' });
   }
 };
@@ -284,8 +281,8 @@ router.put('/:id/password', authenticateJWT, async (req: AuthRequest, res: Respo
     await userRepository.save(user);
 
     return res.json({ message: 'Password updated successfully' });
-  } catch (error) {
-    console.error('Error updating password:', error);
+  } catch (err) {
+    console.error('Error updating password:', err);
     return res.status(500).json({ message: 'Error updating password' });
   }
 });

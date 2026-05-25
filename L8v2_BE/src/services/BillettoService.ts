@@ -63,7 +63,7 @@ export class BillettoService {
     const ticketsAvailable = BillettoApiClient.extractTicketsAvailable(billettoEvent);
     const eventName = billettoEvent.name ?? undefined;
 
-    let record = await this.repo.findByBillettoEventId(billettoEventId);
+    const record = await this.repo.findByBillettoEventId(billettoEventId);
 
     if (record) {
       record.publicUrl = publicUrl || record.publicUrl;
@@ -118,8 +118,8 @@ export class BillettoService {
         } else {
           summary.unlinked++;
         }
-      } catch (err: any) {
-        summary.errors.push(`Event ${billettoEvent.id}: ${err.message}`);
+      } catch (err) {
+        summary.errors.push(`Event ${billettoEvent.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     }
 

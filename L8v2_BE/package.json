@@ -19,7 +19,9 @@
     "test": "jest",
     "test:unit": "jest --selectProjects unit",
     "test:integration": "jest --selectProjects integration --runInBand",
-    "test:coverage": "jest --coverage --coverageReporters=lcov --coverageReporters=text-summary --runInBand"
+    "test:coverage": "jest --coverage --coverageReporters=lcov --coverageReporters=text-summary --runInBand",
+    "test:db:start": "docker compose -f docker-compose.test.yml up -d && until pg_isready -h localhost -p 5433 -q; do sleep 1; done",
+    "test:db:stop": "docker compose -f docker-compose.test.yml down"
   },
   "dependencies": {
     "@types/cors": "^2.8.17",

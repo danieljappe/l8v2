@@ -41,7 +41,7 @@ async function seed() {
         password: await bcrypt.hash('test123', 10), 
       }),
     ].map(async u => {
-      let existing = await userRepo.findOneBy({ email: u.email });
+      const existing = await userRepo.findOneBy({ email: u.email });
       if (!existing) {
         const saved = await userRepo.save(u);
         console.log(`✅ Created user: ${saved.email}`);
@@ -62,7 +62,7 @@ async function seed() {
       artistRepo.create({ name: 'Pop Stars', bio: 'Top pop artists.', genre: 'Pop' }),
       artistRepo.create({ name: 'Electronic Dreams', bio: 'Electronic music duo.', genre: 'Electronic' }),
     ].map(async a => {
-      let existing = await artistRepo.findOneBy({ name: a.name });
+      const existing = await artistRepo.findOneBy({ name: a.name });
       if (!existing) {
         const saved = await artistRepo.save(a);
         console.log(`✅ Created artist: ${saved.name}`);
@@ -92,7 +92,7 @@ async function seed() {
         mapEmbedHtml: `<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2244.2657190888647!2d12.551971177031122!3d55.699897498589514!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x465252ebf0acb1e1%3A0xb69bb60f3e8f302f!2sN%C3%B8rrebro%2C%201%2C%202200%20K%C3%B8benhavn!5e0!3m2!1sen!2sdk!4v1700000000001!5m2!1sen!2sdk" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`
       }),
     ].map(async v => {
-      let existing = await venueRepo.findOneBy({ name: v.name });
+      const existing = await venueRepo.findOneBy({ name: v.name });
       if (!existing) {
         const saved = await venueRepo.save(v);
         console.log(`✅ Created venue: ${saved.name}`);
@@ -135,7 +135,7 @@ async function seed() {
         isActive: true 
       }),
     ].map(async e => {
-      let existing = await eventRepo.findOneBy({ title: e.title });
+      const existing = await eventRepo.findOneBy({ title: e.title });
       if (!existing) {
         const saved = await eventRepo.save(e);
         console.log(`✅ Created event: ${saved.title}`);
@@ -154,7 +154,7 @@ async function seed() {
       { eventId: events[0].id, artistId: artists[1].id, performanceOrder: 2, performanceTime: '21:00', setDuration: 90 },
       { eventId: events[2].id, artistId: artists[4].id, performanceOrder: 1, performanceTime: '21:00', setDuration: 120 },
     ].map(async ea => {
-      let existing = await eventArtistRepo.findOneBy({ 
+      const existing = await eventArtistRepo.findOneBy({ 
         event: { id: ea.eventId }, 
         artist: { id: ea.artistId } 
       });
@@ -184,7 +184,7 @@ async function seed() {
       galleryImageRepo.create({ filename: 'jazzclub.jpg', url: '/images/jazzclub.jpg', caption: 'Jazz Cats on Stage', photographer: 'Carol', category: GalleryCategory.EVENT, isPublished: true, eventId: events[2].id }),
       galleryImageRepo.create({ filename: 'popgala.jpg', url: '/images/popgala.jpg', caption: 'Pop Stars Performance', photographer: 'Dave', category: GalleryCategory.EVENT, isPublished: true, eventId: events[0].id }),
     ].map(async gi => {
-      let existing = await galleryImageRepo.findOneBy({ filename: gi.filename });
+      const existing = await galleryImageRepo.findOneBy({ filename: gi.filename });
       if (!existing) {
         const saved = await galleryImageRepo.save(gi);
         console.log(`✅ Created gallery image: ${saved.filename}`);
@@ -204,7 +204,7 @@ async function seed() {
       contactMessageRepo.create({ name: 'Grace', email: 'grace@example.com', message: 'Support needed.', status: MessageStatus.PENDING }),
       contactMessageRepo.create({ name: 'Heidi', email: 'heidi@example.com', message: 'General inquiry.', status: MessageStatus.REPLIED }),
     ].map(async cm => {
-      let existing = await contactMessageRepo.findOneBy({ email: cm.email, message: cm.message });
+      const existing = await contactMessageRepo.findOneBy({ email: cm.email, message: cm.message });
       if (!existing) {
         const saved = await contactMessageRepo.save(cm);
         console.log(`✅ Created contact message: ${saved.name} (${saved.email})`);

@@ -4,15 +4,9 @@ import { Artist } from '../models/Artist';
 import { authenticateJWT } from '../middleware/authMiddleware';
 import { uploadArtistImage, handleUploadError } from '../middleware/uploadMiddleware';
 import { createEmbedding, sanitizeEmbedCode, validateAndSanitizeEmbedding } from '../utils/embeddingUtils';
-import path from 'path';
-import fs from 'fs';
 
 const router = Router();
 const artistRepository = AppDataSource.getRepository(Artist);
-
-interface ArtistParams {
-  id: string;
-}
 
 /**
  * @swagger
@@ -122,7 +116,7 @@ const getAllArtists: RequestHandler = async (req, res) => {
       relations: ['bookingUser']
     });
     res.json(artists);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching artists' });
   }
 };
@@ -130,7 +124,7 @@ const getAllArtists: RequestHandler = async (req, res) => {
 // Get artist by ID
 const getArtistById: RequestHandler = async (req, res) => {
   try {
-    const artist = await artistRepository.findOne({ 
+    const artist = await artistRepository.findOne({
       where: { id: req.params.id },
       relations: ['bookingUser']
     });
@@ -139,7 +133,7 @@ const getArtistById: RequestHandler = async (req, res) => {
       return;
     }
     res.json(artist);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching artist' });
   }
 };
@@ -213,16 +207,16 @@ const updateArtist: RequestHandler = async (req, res) => {
     }
     
     artistRepository.merge(artist, updateData);
-    const result = await artistRepository.save(artist);
-    
+    await artistRepository.save(artist);
+
     // Reload with relations
-    const updatedArtist = await artistRepository.findOne({ 
+    const updatedArtist = await artistRepository.findOne({
       where: { id: req.params.id },
       relations: ['bookingUser']
     });
-    
+
     res.json(updatedArtist);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error updating artist' });
   }
 };

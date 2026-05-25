@@ -42,7 +42,7 @@ describe('GET /api/gallery', () => {
     await seedGalleryImageWithAuth();
     const res = await request(app).get('/api/gallery');
     expect(res.body.length).toBeGreaterThan(0);
-    const filenames = res.body.map((img: any) => img.filename);
+    const filenames = res.body.map((img: { filename: string }) => img.filename);
     expect(filenames).toContain(validGalleryImage.filename);
     await cleanupDatabase();
   });

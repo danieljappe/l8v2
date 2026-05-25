@@ -1,8 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+export interface JwtUser {
+  id: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 export interface AuthRequest extends Request {
-  user?: any;
+  user?: JwtUser;
 }
 
 export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -11,10 +18,9 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
     const token = authHeader.split(' ')[1];
     try {
       const secret = process.env.JWT_SECRET || 'changeme';
-      const decoded = jwt.verify(token, secret);
-      req.user = decoded;
+      req.user = jwt.verify(token, secret) as JwtUser;
       next();
-    } catch (err) {
+    } catch {
       return res.status(401).json({ message: 'Invalid token' });
     }
   } else {

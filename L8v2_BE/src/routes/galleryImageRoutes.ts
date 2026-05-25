@@ -13,9 +13,6 @@ const router = Router();
 const galleryImageRepository = AppDataSource.getRepository(GalleryImage);
 const eventRepository = AppDataSource.getRepository(Event);
 
-interface GalleryImageParams {
-  id: string;
-}
 
 // Helper function to validate eventId
 const validateEventId = async (eventId?: string): Promise<boolean> => {
@@ -199,7 +196,7 @@ const getAllGalleryImages: RequestHandler = async (req, res) => {
 
     const galleryImages = await galleryImageRepository.find();
     res.json(galleryImages);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching gallery images' });
   }
 };
@@ -215,7 +212,7 @@ const getGalleryImageById: RequestHandler = async (req, res) => {
       return;
     }
     res.json(galleryImage);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching gallery image' });
   }
 };
@@ -236,7 +233,7 @@ const createGalleryImage: RequestHandler = async (req, res) => {
     });
     const result = await galleryImageRepository.save(galleryImage);
     res.status(201).json(result);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error creating gallery image' });
   }
 };
@@ -265,7 +262,7 @@ const updateGalleryImage: RequestHandler = async (req, res) => {
     });
     const result = await galleryImageRepository.save(galleryImage);
     res.json(result);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error updating gallery image' });
   }
 };
@@ -282,7 +279,7 @@ const deleteGalleryImage: RequestHandler = async (req, res) => {
     }
     await galleryImageRepository.remove(galleryImage);
     res.status(204).send();
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error deleting gallery image' });
   }
 };
@@ -364,7 +361,7 @@ const uploadGalleryImage: RequestHandler = async (req, res) => {
         url: filePath
       }
     });
-  } catch (error) {
+  } catch {
     console.error('Upload error:', error);
     
     // If database save failed, try to clean up the uploaded file
@@ -391,7 +388,7 @@ const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isDevelopment ? 200 : 50, // More lenient in development (200 vs 50 in production)
   message: 'Too many upload requests from this IP, please try again after 15 minutes',
-  skip: (req: express.Request, res: express.Response) => {
+  skip: (req: express.Request, _res: express.Response) => {
     if (isDevelopment) {
       const ip = req.ip || req.socket.remoteAddress || '';
       // Skip for localhost in development

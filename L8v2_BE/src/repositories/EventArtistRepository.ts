@@ -1,6 +1,5 @@
 import { EventArtist } from '../models/EventArtist';
 import { BaseRepository } from './BaseRepository';
-import { FindOptionsWhere } from 'typeorm';
 
 export class EventArtistRepository extends BaseRepository<EventArtist> {
   constructor() {

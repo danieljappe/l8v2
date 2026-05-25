@@ -40,7 +40,7 @@ describe('GET /api/venues', () => {
     await seedVenueWithAuth();
     const res = await request(app).get('/api/venues');
     expect(res.body.length).toBeGreaterThan(0);
-    const names = res.body.map((v: any) => v.name);
+    const names = res.body.map((v: { name: string }) => v.name);
     expect(names).toContain(validVenue.name);
     await cleanupDatabase();
   });

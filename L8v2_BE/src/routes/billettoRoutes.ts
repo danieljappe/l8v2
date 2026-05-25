@@ -69,8 +69,8 @@ const listEvents: RequestHandler = async (_req, res) => {
   try {
     const records = await getService().getAllRecords();
     res.json(records);
-  } catch (err: any) {
-    res.status(500).json({ message: 'Failed to fetch Billetto records', error: err.message });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch Billetto records', error: err instanceof Error ? err.message : 'Unknown error' });
   }
 };
 
@@ -78,8 +78,8 @@ const syncAll: RequestHandler = async (_req, res) => {
   try {
     const summary = await getService().syncAllEvents();
     res.json({ message: 'Sync complete', ...summary });
-  } catch (err: any) {
-    res.status(500).json({ message: 'Sync failed', error: err.message });
+  } catch (err) {
+    res.status(500).json({ message: 'Sync failed', error: err instanceof Error ? err.message : 'Unknown error' });
   }
 };
 
@@ -87,8 +87,8 @@ const syncOne: RequestHandler = async (req, res) => {
   try {
     const record = await getService().syncSingleEvent(req.params.billettoEventId);
     res.json(record);
-  } catch (err: any) {
-    res.status(500).json({ message: 'Single sync failed', error: err.message });
+  } catch (err) {
+    res.status(500).json({ message: 'Single sync failed', error: err instanceof Error ? err.message : 'Unknown error' });
   }
 };
 

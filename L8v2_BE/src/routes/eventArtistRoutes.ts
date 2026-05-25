@@ -97,7 +97,7 @@ const getAllEventArtists: RequestHandler = async (_req, res) => {
       relations: ['event', 'artist']
     });
     res.json(eventArtists);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching event artists' });
   }
 };
@@ -114,7 +114,7 @@ const getEventArtistById: RequestHandler = async (req, res) => {
       return;
     }
     res.json(eventArtist);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching event artist' });
   }
 };
@@ -137,13 +137,11 @@ const createEventArtist: RequestHandler = async (req, res) => {
     
     console.log('Event artist created successfully:', result);
     res.status(201).json(result);
-  } catch (error: any) {
-    console.error('Error creating event artist:', error);
-    res.status(500).json({ 
-      message: 'Error creating event artist', 
-      error: error.message,
-      details: error.detail || error.code
-    });
+  } catch (err) {
+    console.error('Error creating event artist:', err);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    const detail = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
+    res.status(500).json({ message: 'Error creating event artist', error: msg, details: detail });
   }
 };
 
@@ -161,7 +159,7 @@ const updateEventArtist: RequestHandler = async (req, res) => {
     eventArtistRepository.merge(eventArtist, req.body);
     const result = await eventArtistRepository.save(eventArtist);
     res.json(result);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error updating event artist' });
   }
 };
@@ -179,7 +177,7 @@ const deleteEventArtist: RequestHandler = async (req, res) => {
     }
     await eventArtistRepository.remove(eventArtist);
     res.status(204).send();
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error deleting event artist' });
   }
 };
@@ -220,13 +218,11 @@ const removeArtistFromEvent: RequestHandler = async (req, res) => {
       removedArtist: eventArtist.artist.name,
       eventTitle: eventArtist.event.title
     });
-  } catch (error: any) {
-    console.error('Error removing artist from event:', error);
-    res.status(500).json({ 
-      message: 'Error removing artist from event',
-      error: error.message,
-      details: error.detail || error.code
-    });
+  } catch (err) {
+    console.error('Error removing artist from event:', err);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    const detail = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
+    res.status(500).json({ message: 'Error removing artist from event', error: msg, details: detail });
   }
 };
 

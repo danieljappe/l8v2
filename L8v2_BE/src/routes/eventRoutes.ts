@@ -8,9 +8,6 @@ import { MoreThanOrEqual, LessThan } from 'typeorm';
 const router = Router();
 const eventRepository = AppDataSource.getRepository(Event);
 
-interface EventParams {
-  id: string;
-}
 
 /**
  * @swagger
@@ -131,7 +128,7 @@ const getAllEvents: RequestHandler = async (req, res) => {
 
     const events = await eventRepository.find({ relations });
     res.json(events);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching events' });
   }
 };
@@ -175,8 +172,8 @@ const getEventById: RequestHandler = async (req, res) => {
     }
     
     res.json(event);
-  } catch (error) {
-    console.error('Error fetching event:', error);
+  } catch (err) {
+    console.error('Error fetching event:', err);
     res.status(500).json({ message: 'Error fetching event' });
   }
 };
@@ -189,13 +186,11 @@ const createEvent: RequestHandler = async (req, res) => {
     const result = await eventRepository.save(event);
     console.log('Event created successfully:', result);
     res.status(201).json(result);
-  } catch (error: any) {
-    console.error('Error creating event:', error);
-    res.status(500).json({ 
-      message: 'Error creating event', 
-      error: error.message,
-      details: error.detail || error.code
-    });
+  } catch (err) {
+    console.error('Error creating event:', err);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    const detail = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
+    res.status(500).json({ message: 'Error creating event', error: msg, details: detail });
   }
 };
 
@@ -220,9 +215,9 @@ const updateEvent: RequestHandler = async (req, res) => {
     });
     
     res.json(updatedEvent);
-  } catch (error: any) {
-    console.error('Error updating event:', error);
-    res.status(500).json({ message: 'Error updating event', error: error.message });
+  } catch (err) {
+    console.error('Error updating event:', err);
+    res.status(500).json({ message: 'Error updating event', error: err instanceof Error ? err.message : 'Unknown error' });
   }
 };
 
@@ -239,9 +234,9 @@ const deleteEvent: RequestHandler = async (req, res) => {
     }
     await eventRepository.remove(event);
     res.status(204).send();
-  } catch (error: any) {
-    console.error('Error deleting event:', error);
-    res.status(500).json({ message: 'Error deleting event', error: error.message });
+  } catch (err) {
+    console.error('Error deleting event:', err);
+    res.status(500).json({ message: 'Error deleting event', error: err instanceof Error ? err.message : 'Unknown error' });
   }
 };
 

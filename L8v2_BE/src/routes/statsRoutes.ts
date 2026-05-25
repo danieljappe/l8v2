@@ -32,7 +32,7 @@ const getStats: RequestHandler = async (_req, res) => {
     ]);
 
     res.json({ eventCount, venueCount, bookableArtistCount, genreCount, totalEventArtists });
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching stats' });
   }
 };

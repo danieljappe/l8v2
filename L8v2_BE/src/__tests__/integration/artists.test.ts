@@ -48,7 +48,7 @@ describe('GET /api/artists', () => {
     await seedArtistWithAuth();
     const res = await request(app).get('/api/artists');
     expect(res.body.length).toBeGreaterThan(0);
-    const names = res.body.map((a: any) => a.name);
+    const names = res.body.map((a: { name: string }) => a.name);
     expect(names).toContain(validArtist.name);
     await cleanupDatabase();
   });
@@ -356,8 +356,8 @@ describe('POST /api/artists/:id/embeddings', () => {
       .send({ embedCode: SPOTIFY_EMBED });
 
     const getRes = await request(app).get(`/api/artists/${artistId}`);
-    const embeddings: any[] = getRes.body.embeddings ?? [];
-    const spotifyEmbeddings = embeddings.filter((e: any) => e.platform === 'spotify');
+    const embeddings: { platform: string }[] = getRes.body.embeddings ?? [];
+    const spotifyEmbeddings = embeddings.filter((e) => e.platform === 'spotify');
     expect(spotifyEmbeddings.length).toBeGreaterThan(0);
   });
 });
@@ -505,7 +505,7 @@ describe('DELETE /api/artists/:id/embeddings/:embeddingId', () => {
       .set('Authorization', `Bearer ${token}`);
 
     const getRes = await request(app).get(`/api/artists/${artistId}`);
-    const ids = (getRes.body.embeddings ?? []).map((e: any) => e.id);
+    const ids = (getRes.body.embeddings ?? []).map((e: { id: string }) => e.id);
     expect(ids).not.toContain(embeddingId);
   });
 });

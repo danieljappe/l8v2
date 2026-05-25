@@ -19,18 +19,18 @@ const galleryStorage = multer.diskStorage({
     if (!fs.existsSync(uploadDir)) {
       try {
         fs.mkdirSync(uploadDir, { recursive: true });
-      } catch (error) {
+      } catch {
         return cb(new Error('Failed to create upload directory'), '');
       }
     }
-    
+
     // Check if directory is writable
     try {
       fs.accessSync(uploadDir, fs.constants.W_OK);
-    } catch (error) {
+    } catch {
       return cb(new Error('Upload directory is not writable'), '');
     }
-    
+
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
@@ -47,28 +47,28 @@ const galleryStorage = multer.diskStorage({
 const artistStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, '../../uploads/artists');
-    
+
     // Security check: ensure the path is within the intended directory
     const resolvedPath = path.resolve(uploadDir);
     const basePath = path.resolve(path.join(__dirname, '../../uploads'));
-    
+
     if (!resolvedPath.startsWith(basePath)) {
       return cb(new Error('Invalid upload path'), '');
     }
-    
+
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       try {
         fs.mkdirSync(uploadDir, { recursive: true });
-      } catch (error) {
+      } catch {
         return cb(new Error('Failed to create upload directory'), '');
       }
     }
-    
+
     // Check if directory is writable
     try {
       fs.accessSync(uploadDir, fs.constants.W_OK);
-    } catch (error) {
+    } catch {
       return cb(new Error('Upload directory is not writable'), '');
     }
     
@@ -85,7 +85,7 @@ const artistStorage = multer.diskStorage({
 });
 
 // File filter for images only
-const fileFilter = (req: any, file: any, cb: any) => {
+const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
   // Check file type by extension
   const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
   const ext = path.extname(file.originalname).toLowerCase();
@@ -133,22 +133,21 @@ export const uploadArtistImage = artistUpload.single('image');
 export const uploadMultiple = galleryUpload.array('images', 10);
 
 // Error handling middleware for multer
-export const handleUploadError = (err: any, req: any, res: any, next: any) => {
-  console.error('Multer error:', err);
-  
+import { Request, Response, NextFunction } from 'express';
+export const handleUploadError = (err: unknown, _req: Request, res: Response, next: NextFunction): void => {
   if (err instanceof multer.MulterError) {
     switch (err.code) {
       case 'LIMIT_FILE_SIZE':
-        return res.status(400).json({ message: 'File too large. Maximum size is 5MB.' });
+        res.status(400).json({ message: 'File too large. Maximum size is 5MB.' }); return;
       case 'LIMIT_FILE_COUNT':
-        return res.status(400).json({ message: 'Too many files. Only one file allowed.' });
+        res.status(400).json({ message: 'Too many files. Only one file allowed.' }); return;
       case 'LIMIT_UNEXPECTED_FILE':
-        return res.status(400).json({ message: 'Unexpected field name in upload.' });
+        res.status(400).json({ message: 'Unexpected field name in upload.' }); return;
       default:
-        return res.status(400).json({ message: `Upload error: ${err.message}` });
+        res.status(400).json({ message: `Upload error: ${err.message}` }); return;
     }
-  } else if (err) {
-    return res.status(400).json({ message: err.message });
+  } else if (err instanceof Error) {
+    res.status(400).json({ message: err.message }); return;
   }
   next();
 };
