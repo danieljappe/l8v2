@@ -7,7 +7,7 @@
 #
 # Job graph:
 #   lint ──┐
-#           ├──> sonar (SonarCloud analysis)
+#           ├──> sonar (SonarCloud analysis, with coverage artifact)
 #           ├──> build ──> deploy (pm2 on VPS, main only, manual approval)
 #   test ──┘
 
@@ -35,10 +35,10 @@ jobs:
 
   # =========================================================================
   # JOB 1: lint
-  # Runs ESLint on the frontend (backend has no linter configured).
+  # Runs ESLint on both frontend and backend.
   # =========================================================================
   lint:
-    name: Lint (Frontend)
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,19 +47,31 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: L8V2_FE/package-lock.json
+          cache-dependency-path: |
+            L8V2_FE/package-lock.json
+            L8v2_BE/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: L8V2_FE
         run: npm ci
 
-      - name: Run ESLint
+      - name: Run ESLint (Frontend)
         working-directory: L8V2_FE
+        run: npm run lint
+
+      - name: Install backend dependencies
+        working-directory: L8v2_BE
+        run: npm ci
+
+      - name: Run ESLint (Backend)
+        working-directory: L8v2_BE
         run: npm run lint
 
   # =========================================================================
   # JOB 2: test
-  # Runs backend unit + integration tests with a live PostgreSQL instance.
+  # Runs backend unit + integration tests with coverage against a live
+  # PostgreSQL instance, then uploads the lcov report as an artifact for
+  # the SonarCloud job to consume.
   #
   # Notes:
   #   - setup.ts calls AppDataSource.synchronize(true) — schema is
@@ -108,17 +120,23 @@ jobs:
         working-directory: L8v2_BE
         run: npm ci
 
-      - name: Run unit tests
+      - name: Run tests with coverage
         working-directory: L8v2_BE
-        run: npm run test:unit
+        run: npm run test:coverage
 
-      - name: Run integration tests
-        working-directory: L8v2_BE
-        run: npm run test:integration
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: L8v2_BE/coverage/lcov.info
+          retention-days: 7
 
   # =========================================================================
   # JOB 3: sonar
   # Runs SonarCloud static analysis after lint + test pass.
+  # Downloads the coverage artifact produced by the test job so that
+  # SonarCloud can track coverage metrics over time.
+  #
   # Requires:
   #   SONAR_TOKEN — repo secret (Settings → Secrets → Actions)
   #   sonar-project.properties — at the repo root (already committed)
@@ -133,6 +151,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history required for blame data and new-code detection
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: L8v2_BE/coverage
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3
