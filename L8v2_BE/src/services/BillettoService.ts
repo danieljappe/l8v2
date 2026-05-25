@@ -13,12 +13,18 @@ export interface SyncSummary {
 
 export class BillettoService {
   private readonly repo: BillettoEventDataRepository;
-  private readonly apiClient: BillettoApiClient;
   private readonly eventRepo = AppDataSource.getRepository(Event);
+  private _apiClient: BillettoApiClient | null = null;
+
+  // Lazy getter — only instantiated when a sync/webhook call is made.
+  // This allows getAllRecords() to work without BILLETTO_API_KEY being set.
+  private get apiClient(): BillettoApiClient {
+    if (!this._apiClient) this._apiClient = new BillettoApiClient();
+    return this._apiClient;
+  }
 
   constructor() {
     this.repo = new BillettoEventDataRepository();
-    this.apiClient = new BillettoApiClient();
   }
 
   // Extract the numeric Billetto event ID from a billettoURL.
