@@ -361,7 +361,7 @@ const uploadGalleryImage: RequestHandler = async (req, res) => {
         url: filePath
       }
     });
-  } catch {
+  } catch (error) {
     console.error('Upload error:', error);
     
     // If database save failed, try to clean up the uploaded file

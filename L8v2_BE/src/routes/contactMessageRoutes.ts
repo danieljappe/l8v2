@@ -254,9 +254,9 @@ const createContactMessage: RequestHandler = async (req, res) => {
     
     const result = await contactMessageRepository.save(contactMessage);
     res.status(201).json(result);
-  } catch {
+  } catch (error) {
     console.error('Error creating contact message:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Error creating contact message',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
