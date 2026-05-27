@@ -114,4 +114,24 @@ export interface Message {
   createdAt: string;
 }
 
-export type AdminSection = 'dashboard' | 'events' | 'artists' | 'venues' | 'gallery' | 'messages' | 'users' | 'account';
+export type AdminSection = 'dashboard' | 'events' | 'artists' | 'venues' | 'gallery' | 'messages' | 'users' | 'account' | 'logs';
+
+export interface AuditLogEntry {
+  id: number;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  entityType: string;
+  entityId: string;
+  userId: string | null;
+  user?: { id: string; firstName?: string; lastName?: string; email?: string };
+  oldValues: Record<string, unknown> | null;
+  newValues: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface AuditLogPage {
+  data: AuditLogEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}

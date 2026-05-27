@@ -419,6 +419,16 @@ export const apiService = {
     return response.json();
   },
 
+  // Audit logs (admin-only)
+  getAuditLogs: (params: { page?: number; limit?: number; table?: string; action?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page)   qs.set('page',   String(params.page));
+    if (params.limit)  qs.set('limit',  String(params.limit));
+    if (params.table)  qs.set('table',  params.table);
+    if (params.action) qs.set('action', params.action);
+    return apiClient.get<import('../types/admin').AuditLogPage>(`/audit-logs?${qs.toString()}`);
+  },
+
   // Artist image upload
   uploadArtistImage: async (file: File) => {
     const formData = new FormData();

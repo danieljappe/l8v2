@@ -9,6 +9,7 @@ import GalleryList from '../components/admin/GalleryList';
 import MessagesList from '../components/admin/MessagesList';
 import AccountSettings from '../components/admin/AccountSettings';
 import UsersList from '../components/admin/UsersList';
+import AuditLogsList from '../components/admin/AuditLogsList';
 import { useAuth } from '../hooks/useAuth';
 import type { AdminSection, Event, Artist, Venue, GalleryItem, Message } from '../types/admin';
 import type { Event as ApiEvent, Artist as ApiArtist, Venue as ApiVenue, ContactMessage as ApiContactMessage } from '../services/api';
@@ -553,6 +554,8 @@ export default function Admin() {
         );
       case 'users':
         return <UsersList currentUser={user} />;
+      case 'logs':
+        return <AuditLogsList />;
       case 'account':
         return <AccountSettings user={user} />;
       default:

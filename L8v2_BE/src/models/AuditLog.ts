@@ -25,6 +25,12 @@ export class AuditLog {
   @Column({ type: 'json', nullable: true })
   metadata?: Record<string, unknown>;
 
+  @Column({ type: 'json', nullable: true })
+  oldValues?: Record<string, unknown>;
+
+  @Column({ type: 'json', nullable: true })
+  newValues?: Record<string, unknown>;
+
   @Column({ nullable: true })
   ipAddress?: string;
 
