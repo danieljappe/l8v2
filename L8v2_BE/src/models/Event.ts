@@ -24,9 +24,6 @@ export class Event {
   @Column({ nullable: true })
   endTime?: string;
 
-  @Column({ default: 0 })
-  soldTickets!: number;
-
   @Column({ nullable: true })
   maxCapacity?: number;
 

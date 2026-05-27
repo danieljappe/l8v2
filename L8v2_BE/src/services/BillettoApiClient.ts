@@ -50,13 +50,14 @@ export class BillettoApiClient {
     this.authHeader = `${apiKey}:${apiSecret}`;
   }
 
-  private async request<T>(path: string): Promise<T> {
+  private async request<T>(path: string, attempt = 1): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
+    let res: Response;
     try {
-      const res = await fetch(url, {
+      res = await fetch(url, {
         signal: controller.signal,
         headers: {
           'Api-Keypair': this.authHeader,
@@ -65,16 +66,21 @@ export class BillettoApiClient {
           Accept: 'application/json',
         },
       });
-
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`Billetto API error ${res.status} for ${path}: ${body}`);
-      }
-
-      return res.json() as Promise<T>;
     } finally {
       clearTimeout(timeout);
     }
+
+    if (!res.ok) {
+      // Retry on 5xx with exponential backoff (1 s, 2 s, 4 s)
+      if (res.status >= 500 && attempt < 3) {
+        await new Promise(r => setTimeout(r, 1000 * 2 ** (attempt - 1)));
+        return this.request<T>(path, attempt + 1);
+      }
+      const body = await res.text();
+      throw new Error(`Billetto API error ${res.status} for ${path}: ${body}`);
+    }
+
+    return res.json() as Promise<T>;
   }
 
   async getEvent(billettoEventId: string | number): Promise<BillettoApiEvent> {
@@ -86,20 +92,9 @@ export class BillettoApiClient {
   async getAllEvents(): Promise<BillettoApiEvent[]> {
     const events: BillettoApiEvent[] = [];
     let path = '/organiser/events?expand=ticket_types';
-    let firstPage = true;
 
     while (true) {
       const response = await this.request<PaginatedResponse>(path);
-
-      if (firstPage) {
-        console.log('[BillettoApiClient] Response keys:', Object.keys(response));
-        const sample = response.data?.[0];
-        if (sample) {
-          console.log('[BillettoApiClient] Sample event:', JSON.stringify(sample, null, 2));
-        }
-        firstPage = false;
-      }
-
       const pageEvents = response.data ?? [];
       events.push(...pageEvents);
 
@@ -107,11 +102,9 @@ export class BillettoApiClient {
       if (!response.has_more || !response.next_url) break;
 
       // next_url is a full URL — strip the base so request() can prepend it
-      const nextPath = response.next_url.replace(this.baseUrl, '');
-      path = nextPath;
+      path = response.next_url.replace(this.baseUrl, '');
     }
 
-    console.log(`[BillettoApiClient] Fetched ${events.length} events total`);
     return events;
   }
 

@@ -93,17 +93,13 @@ export class BillettoService {
       await this.repo.save(newRecord);
     }
 
-    // Keep event row in sync so dashboard doesn't need to join billetto_event_data.
+    // Keep event.maxCapacity in sync so dashboard doesn't need to join billetto_event_data.
     // Also backfill billettoURL if missing — so future syncs use ID matching instead of name matching.
     const linkedEventId = localEvent?.id ?? record?.eventId;
     if (linkedEventId) {
-      const soldTickets = (maxCapacity != null && ticketsAvailable != null)
-        ? maxCapacity - ticketsAvailable
-        : undefined;
       const urlMissing = localEvent && !localEvent.billettoURL && publicUrl;
       await this.eventRepo.update(linkedEventId, {
         ...(maxCapacity != null ? { maxCapacity } : {}),
-        ...(soldTickets != null ? { soldTickets } : {}),
         ...(urlMissing ? { billettoURL: publicUrl } : {}),
       });
     }
@@ -173,9 +169,6 @@ export class BillettoService {
             record.ticketsAvailable = 0;
             record.lastSyncedAt = new Date();
             await this.repo.save(record);
-            if (record.eventId && record.maxCapacity != null) {
-              await this.eventRepo.update(record.eventId, { soldTickets: record.maxCapacity });
-            }
           }
         }
         break;
