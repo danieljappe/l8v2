@@ -1,3 +1,5 @@
+import type { AuditLogPage } from '../types/admin';
+
 // API Base URL - adjust this based on your backend deployment
 const API_BASE_URL = import.meta.env.VITE_API_URL || (() => {
   // Auto-detect environment
@@ -426,7 +428,7 @@ export const apiService = {
     if (params.limit)  qs.set('limit',  String(params.limit));
     if (params.table)  qs.set('table',  params.table);
     if (params.action) qs.set('action', params.action);
-    return apiClient.get<import('../types/admin').AuditLogPage>(`/audit-logs?${qs.toString()}`);
+    return apiClient.get<AuditLogPage>(`/audit-logs?${qs.toString()}`);
   },
 
   // Artist image upload

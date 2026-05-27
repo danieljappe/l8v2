@@ -12,6 +12,7 @@ interface ArtistDraft {
   embeddings: { type: string; embedCode: string }[];
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const emptyArtistDraft: ArtistDraft = {
   name: '', bio: '', imageUrl: '', website: '', socialMedia: [],
   genre: '', isBookable: false, bookingUserId: '', embeddings: [],

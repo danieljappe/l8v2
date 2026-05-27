@@ -7,6 +7,7 @@ interface EventDraft {
   image: string; billettoURL: string; status: Event['status'];
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const emptyEventDraft: EventDraft = {
   title: '', description: '', date: '', time: '', endTime: '',
   venue: '', artists: [], price: 0, capacity: 0,
