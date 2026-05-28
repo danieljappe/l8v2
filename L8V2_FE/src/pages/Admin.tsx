@@ -21,10 +21,16 @@ import ConstraintErrorModal from '../components/admin/ConstraintErrorModal';
 function mapApiEventToAdminEvent(apiEvent: ApiEvent): Event {
   // Always parse the date string to YYYY-MM-DD
   let dateStr = '';
-  if (typeof apiEvent.date === 'string') {
-    dateStr = apiEvent.date.length > 10 ? apiEvent.date.slice(0, 10) : apiEvent.date;
-  } else {
-    dateStr = '';
+  if (typeof apiEvent.date === 'string' && apiEvent.date.length > 0) {
+    const d = new Date(apiEvent.date);
+    if (!isNaN(d.getTime())) {
+      // Use local date methods: node-postgres reads timestamp-without-tz as local time,
+      // so getFullYear/Month/Date (local) give the correct calendar date regardless of UTC offset.
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      dateStr = `${y}-${m}-${day}`;
+    }
   }
   return {
     id: apiEvent.id,
