@@ -38,6 +38,16 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
   const [editing, setEditing] = useState<GalleryItem | null | 'new'>(null);
   const [confirmDel, setConfirmDel] = useState<GalleryItem | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function copyUrl(g: GalleryItem) {
+    const url = g.url || g.thumbnailUrl || '';
+    if (!url) return;
+    void navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(g.id);
+      setTimeout(() => setCopiedId(c => c === g.id ? null : c), 1500);
+    });
+  }
 
   useEffect(() => {
     apiService.getEvents().then(r => { if (r.data) setEvents(r.data); }).catch(() => { /* noop */ });
@@ -88,6 +98,8 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
 
   const IcEdit = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>;
   const IcTrash = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>;
+  const IcCopy = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><rect x={9} y={9} width={13} height={13} rx={2}/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
+  const IcCheck = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
 
   return (
     <div>
@@ -165,6 +177,13 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
                     <div className="a-gal-overlay">
                       <div className="overlay-actions">
                         <button onClick={() => setEditing(g)} title="Edit"><IcEdit /></button>
+                        <button
+                          title={copiedId === g.id ? 'Copied!' : 'Copy image URL'}
+                          onClick={e => { e.stopPropagation(); copyUrl(g); }}
+                          style={copiedId === g.id ? { color: 'var(--ok)' } : undefined}
+                        >
+                          {copiedId === g.id ? <IcCheck /> : <IcCopy />}
+                        </button>
                         <button className="danger" onClick={() => setConfirmDel(g)} title="Delete"><IcTrash /></button>
                       </div>
                       {g.caption && <div className="caption">{g.caption}</div>}
@@ -202,6 +221,14 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
                   </div>
                   <div style={{ display: 'flex', gap: 3 }}>
                     <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm" onClick={() => setEditing(g)}><IcEdit /></button>
+                    <button
+                      className="a-btn a-btn-ghost a-btn-icon a-btn-sm"
+                      title={copiedId === g.id ? 'Copied!' : 'Copy image URL'}
+                      onClick={() => copyUrl(g)}
+                      style={copiedId === g.id ? { color: 'var(--ok)' } : undefined}
+                    >
+                      {copiedId === g.id ? <IcCheck /> : <IcCopy />}
+                    </button>
                     <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm a-btn-danger" onClick={() => setConfirmDel(g)}><IcTrash /></button>
                   </div>
                 </div>
@@ -250,6 +277,14 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
                       <td style={{ fontSize: 12, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>{fmtDate(g.updatedAt)}</td>
                       <td className="a-actions" onClick={e => e.stopPropagation()}>
                         <button className="a-btn a-btn-ghost a-btn-icon" onClick={() => setEditing(g)}><IcEdit /></button>
+                        <button
+                          className="a-btn a-btn-ghost a-btn-icon"
+                          title={copiedId === g.id ? 'Copied!' : 'Copy image URL'}
+                          onClick={() => copyUrl(g)}
+                          style={copiedId === g.id ? { color: 'var(--ok)' } : undefined}
+                        >
+                          {copiedId === g.id ? <IcCheck /> : <IcCopy />}
+                        </button>
                         <button className="a-btn a-btn-ghost a-btn-icon a-btn-danger" onClick={() => setConfirmDel(g)}><IcTrash /></button>
                       </td>
                     </tr>
@@ -314,6 +349,30 @@ export default function GalleryList({ gallery, onAddGallery, onUpdateGallery, on
         </>
       )}
     </div>
+  );
+}
+
+function CopyUrlButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  if (!url) return null;
+  return (
+    <button
+      type="button"
+      className="a-btn a-btn-ghost a-btn-icon"
+      title={copied ? 'Copied!' : 'Copy URL'}
+      style={copied ? { color: 'var(--ok)' } : undefined}
+      onClick={() => {
+        void navigator.clipboard.writeText(url).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+    >
+      {copied
+        ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><rect x={9} y={9} width={13} height={13} rx={2}/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      }
+    </button>
   );
 }
 
@@ -383,7 +442,10 @@ function GalleryDrawerForm({ item, events, onSave, onClose, onDelete }: {
           </div>
           <div className="a-field full">
             <label>URL</label>
-            <input className="a-input" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} placeholder="https://…" />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input className="a-input" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} placeholder="https://…" style={{ flex: 1 }} />
+              <CopyUrlButton url={form.url} />
+            </div>
           </div>
           <div className="a-field full">
             <label>Caption</label>
