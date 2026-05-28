@@ -117,7 +117,7 @@ export interface Message {
 
 export type AdminSection = 'dashboard' | 'events' | 'artists' | 'venues' | 'gallery' | 'messages' | 'users' | 'account' | 'logs';
 
-export type TimelineItemType = 'artist_set' | 'break' | 'dj_set' | 'talk' | 'custom';
+export type TimelineItemType = 'artist_set' | 'break' | 'dj_set' | 'talk' | 'custom' | 'collab_set';
 
 export interface TimelineItem {
   id: string;
@@ -133,6 +133,7 @@ export interface TimelineItem {
   artistName?: string;
   artistGenre?: string;
   artistImageUrl?: string;
+  collaborators?: { id: string; artistId: string; name: string }[];
 }
 
 export interface AuditLogEntry {

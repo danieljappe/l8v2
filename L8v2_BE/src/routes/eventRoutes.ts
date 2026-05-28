@@ -189,7 +189,8 @@ const getEventById: RequestHandler = async (req, res) => {
          artist_id          AS "artistId",
          artist_name        AS "artistName",
          artist_genre       AS "artistGenre",
-         artist_image_url   AS "artistImageUrl"
+         artist_image_url   AS "artistImageUrl",
+         collaborators
        FROM event_running_order
        WHERE event_id = $1
        ORDER BY position`,

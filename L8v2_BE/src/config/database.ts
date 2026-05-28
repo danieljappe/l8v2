@@ -9,6 +9,7 @@ import { EventArtist } from '../models/EventArtist';
 import { AuditLog } from '../models/AuditLog';
 import { BillettoEventData } from '../models/BillettoEventData';
 import { EventTimelineItem } from '../models/EventTimelineItem';
+import { TimelineSlotArtist } from '../models/TimelineSlotArtist';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
@@ -59,7 +60,8 @@ export const AppDataSource = new DataSource({
     EventArtist,
     AuditLog,
     BillettoEventData,
-    EventTimelineItem
+    EventTimelineItem,
+    TimelineSlotArtist,
   ],
   migrations: [
     isProduction 

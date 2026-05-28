@@ -70,14 +70,6 @@ const TYPE_META: Record<string, { label: string; bg: string; color: string }> = 
   collab_set: { label: 'Collab',  bg: 'rgba(255,140,0,0.14)',   color: '#ff8c00'                  },
 };
 
-function parseCollabNotes(notes?: string): { collaborators: { id: string; name: string }[] } | null {
-  if (!notes) return null;
-  try {
-    const p = JSON.parse(notes);
-    if (p._collab === true && Array.isArray(p.collaborators)) return p;
-  } catch { /* invalid JSON — not a collab slot */ }
-  return null;
-}
 
 // ─── FadeUp helper ────────────────────────────────────────────────────────────
 
@@ -451,10 +443,9 @@ const EventDetails: React.FC = () => {
                     <div className="space-y-0">
                       {timeline.map((item, idx) => {
                         const time = effectiveTimes[idx];
-                        const collab = parseCollabNotes(item.notes);
-                        const displayType = collab ? 'collab_set' : item.type;
-                        const meta = TYPE_META[displayType] ?? TYPE_META.custom;
-                        const isArtistSlot = displayType === 'artist_set' || displayType === 'dj_set' || displayType === 'collab_set';
+                        const isCollab = item.type === 'collab_set';
+                        const meta = TYPE_META[item.type] ?? TYPE_META.custom;
+                        const isArtistSlot = item.type === 'artist_set' || item.type === 'dj_set' || isCollab;
 
                         return (
                           <motion.div
@@ -480,9 +471,9 @@ const EventDetails: React.FC = () => {
                             {/* Content */}
                             {(() => {
                               const handleClick = isArtistSlot ? () => {
-                                if (collab) {
-                                  const artists = collab.collaborators
-                                    .map(c => event.eventArtists?.find(ea => ea.id === c.id)?.artist)
+                                if (isCollab && item.collaborators?.length) {
+                                  const artists = item.collaborators
+                                    .map(c => event.eventArtists?.find(ea => ea.artist.id === c.artistId)?.artist)
                                     .filter((a): a is Artist => !!a);
                                   if (artists.length) setSelectedCollabArtists(artists);
                                 } else if (item.artistId) {
@@ -519,10 +510,10 @@ const EventDetails: React.FC = () => {
                                         {formatDuration(item.durationMinutes)}
                                       </span>
                                     )}
-                                    {collab ? (
+                                    {isCollab && item.collaborators?.length ? (
                                       <div className="flex -space-x-2 shrink-0">
-                                        {collab.collaborators.map(c => {
-                                          const ea = event.eventArtists?.find(e => e.id === c.id);
+                                        {item.collaborators.map(c => {
+                                          const ea = event.eventArtists?.find(e => e.artist.id === c.artistId);
                                           const imgUrl = ea?.artist.imageUrl ? constructFullUrl(ea.artist.imageUrl) : null;
                                           return imgUrl ? (
                                             <img

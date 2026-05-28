@@ -14,7 +14,7 @@ import apiService from '../../services/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type UIType = TimelineItemType | 'collab_set';
+type UIType = TimelineItemType;
 
 interface BookedArtist {
   id: string; // event_artist id
@@ -35,10 +35,6 @@ interface AddFormState {
   startTime: string;
   durationMinutes: string;
   collaboratorIds: string[];
-}
-
-interface CollabData {
-  collaborators: { id: string; name: string }[];
 }
 
 interface DerivedItem {
@@ -104,17 +100,6 @@ function deriveTimeline(items: TimelineItem[]): DerivedItem[] {
 
 function totalRuntime(items: TimelineItem[]): number {
   return items.reduce((sum, i) => sum + (i.durationMinutes ?? 0), 0);
-}
-
-// ─── Collab helper ────────────────────────────────────────────────────────────
-
-function parseCollabNotes(notes?: string): CollabData | null {
-  if (!notes) return null;
-  try {
-    const p = JSON.parse(notes);
-    if (p._collab === true && Array.isArray(p.collaborators)) return p as CollabData;
-  } catch { /* invalid JSON — not a collab slot */ }
-  return null;
 }
 
 // ─── Type metadata ────────────────────────────────────────────────────────────
@@ -198,9 +183,8 @@ function SortableItem({ derived, isDropTarget, onDelete, onBlurTime, onBlurDurat
     transition,
   };
 
-  const collab = parseCollabNotes(item.notes);
-  const displayType: UIType = collab ? 'collab_set' : item.type;
-  const meta = TYPE_META[displayType];
+  const displayType: UIType = item.type;
+  const meta = TYPE_META[displayType] ?? TYPE_META.custom;
 
   return (
     <>
@@ -416,10 +400,11 @@ export default function TimelineEditor({ eventId, eventArtists, initialTimeline 
 
   const placedArtistIds = new Set(items.filter(i => i.eventArtistId).map(i => i.eventArtistId!));
   const placedCollabIds = new Set(
-    items.flatMap(i => {
-      const c = parseCollabNotes(i.notes);
-      return c ? c.collaborators.map(col => col.id) : [];
-    })
+    items.flatMap(i =>
+      i.type === 'collab_set' && i.collaborators
+        ? i.collaborators.map(c => c.id)
+        : []
+    )
   );
   const unplacedArtists = eventArtists.filter(ea => !placedArtistIds.has(ea.id) && !placedCollabIds.has(ea.id));
 
@@ -558,21 +543,14 @@ export default function TimelineEditor({ eventId, eventArtists, initialTimeline 
     if (!addForm) return;
     setSaving(true);
 
-    const apiType: TimelineItemType = addForm.type === 'collab_set' ? 'custom' : addForm.type;
-
     const payload: Parameters<typeof apiService.addTimelineItem>[1] = {
-      type: apiType,
+      type: addForm.type,
       startTime: addForm.startTime || undefined,
       durationMinutes: addForm.durationMinutes ? parseInt(addForm.durationMinutes, 10) : undefined,
     };
 
     if (addForm.type === 'collab_set') {
-      const selected = eventArtists.filter(ea => addForm.collaboratorIds.includes(ea.id));
-      payload.title = selected.map(ea => ea.artist.name).join(' & ');
-      payload.notes = JSON.stringify({
-        _collab: true,
-        collaborators: selected.map(ea => ({ id: ea.id, name: ea.artist.name })),
-      });
+      payload.collaboratorIds = addForm.collaboratorIds;
     } else {
       payload.title = addForm.title.trim();
     }

@@ -70,7 +70,21 @@ beforeAll(async () => {
       a."id"       AS "artist_id",
       a."name"     AS "artist_name",
       a."genre"    AS "artist_genre",
-      a."imageUrl" AS "artist_image_url"
+      a."imageUrl" AS "artist_image_url",
+      COALESCE(
+        (SELECT json_agg(
+            json_build_object(
+              'id',       tsa."event_artist_id",
+              'artistId', ea2."artistId",
+              'name',     a2."name"
+            ) ORDER BY tsa."created_at"
+           )
+         FROM "timeline_slot_artist" tsa
+         JOIN "event_artist" ea2 ON ea2."id" = tsa."event_artist_id"
+         JOIN "artist" a2 ON a2."id" = ea2."artistId"
+         WHERE tsa."timeline_item_id" = ti."id"),
+        '[]'::json
+      ) AS "collaborators"
     FROM "event_timeline_item" ti
     LEFT JOIN "event_artist" ea ON ea."id" = ti."event_artist_id"
     LEFT JOIN "artist" a ON a."id" = ea."artistId"

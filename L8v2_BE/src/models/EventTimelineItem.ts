@@ -1,11 +1,12 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn,
+  Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn,
   CreateDateColumn, UpdateDateColumn, Index
 } from 'typeorm';
 import { Event } from './Event';
 import { EventArtist } from './EventArtist';
+import { TimelineSlotArtist } from './TimelineSlotArtist';
 
-export type TimelineItemType = 'artist_set' | 'break' | 'dj_set' | 'talk' | 'custom';
+export type TimelineItemType = 'artist_set' | 'break' | 'dj_set' | 'talk' | 'custom' | 'collab_set';
 
 @Entity('event_timeline_item')
 @Index('idx_timeline_event_id', ['eventId'])
@@ -44,6 +45,9 @@ export class EventTimelineItem {
 
   @Column({ type: 'text', nullable: true })
   notes?: string;
+
+  @OneToMany(() => TimelineSlotArtist, tsa => tsa.timelineItem)
+  slotArtists!: TimelineSlotArtist[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

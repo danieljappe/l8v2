@@ -449,7 +449,7 @@ export const apiService = {
     eventArtistId?: string;
     startTime?: string;
     durationMinutes?: number;
-    notes?: string;
+    collaboratorIds?: string[];
   }) => apiClient.post<TimelineItem>(`/timeline/${eventId}`, payload),
   reorderTimeline: (eventId: string, items: { id: string; position: number }[]) =>
     apiClient.put<{ message: string }>(`/timeline/${eventId}/reorder`, { items }),
