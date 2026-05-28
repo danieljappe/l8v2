@@ -1,13 +1,14 @@
 import React, { useRef } from 'react';
 import {
   motion,
+  AnimatePresence,
   useScroll,
   useTransform,
   useInView,
 } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Calendar, Clock, MapPin, Music, Ticket,
+  Calendar, Clock, MapPin, Music, Ticket, X,
   AlertCircle, Camera, ChevronDown, ExternalLink,
 } from 'lucide-react';
 import ArtistModal from '../components/ArtistModal';
@@ -197,6 +198,7 @@ const EventDetails: React.FC = () => {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
   const [selectedArtist, setSelectedArtist] = React.useState<Artist | null>(null);
+  const [selectedCollabArtists, setSelectedCollabArtists] = React.useState<Artist[] | null>(null);
 
   const isValidEventName = eventName && typeof eventName === 'string' && eventName.trim() !== '';
   const { data: event, loading, error } = useEvent(isValidEventName ? eventName : '');
@@ -476,40 +478,75 @@ const EventDetails: React.FC = () => {
                             </div>
 
                             {/* Content */}
-                            <div className="flex-1 flex items-center justify-between gap-3 min-w-0">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center flex-wrap gap-2 mb-0.5">
-                                  <span
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
-                                    style={{ background: meta.bg, color: meta.color }}
-                                  >
-                                    {meta.label}
-                                  </span>
-                                  {time && (
-                                    <span className="text-white/35 text-[11px] font-mono shrink-0">{time}</span>
-                                  )}
-                                </div>
-                                <p className={`truncate font-semibold ${isArtistSlot ? 'text-white text-base' : 'text-white/55 text-sm'}`}>
-                                  {item.title}
-                                </p>
-                              </div>
+                            {(() => {
+                              const handleClick = isArtistSlot ? () => {
+                                if (collab) {
+                                  const artists = collab.collaborators
+                                    .map(c => event.eventArtists?.find(ea => ea.id === c.id)?.artist)
+                                    .filter((a): a is Artist => !!a);
+                                  if (artists.length) setSelectedCollabArtists(artists);
+                                } else if (item.artistId) {
+                                  const artist = event.eventArtists?.find(ea => ea.artist.id === item.artistId)?.artist ?? null;
+                                  if (artist) setSelectedArtist(artist);
+                                }
+                              } : undefined;
 
-                              <div className="flex items-center gap-3 shrink-0">
-                                {item.durationMinutes != null && (
-                                  <span className="text-white/25 text-[11px] hidden sm:block">
-                                    {formatDuration(item.durationMinutes)}
-                                  </span>
-                                )}
-                                {item.artistImageUrl && (
-                                  <img
-                                    src={constructFullUrl(item.artistImageUrl)}
-                                    alt={item.artistName ?? item.title}
-                                    className="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0"
-                                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                  />
-                                )}
-                              </div>
-                            </div>
+                              return (
+                                <div
+                                  className={`flex-1 flex items-center justify-between gap-3 min-w-0 ${isArtistSlot ? 'cursor-pointer group' : ''}`}
+                                  onClick={handleClick}
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center flex-wrap gap-2 mb-0.5">
+                                      <span
+                                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
+                                        style={{ background: meta.bg, color: meta.color }}
+                                      >
+                                        {meta.label}
+                                      </span>
+                                      {time && (
+                                        <span className="text-white/35 text-[11px] font-mono shrink-0">{time}</span>
+                                      )}
+                                    </div>
+                                    <p className={`truncate font-semibold transition-colors ${isArtistSlot ? 'text-white text-base group-hover:text-l8-blue' : 'text-white/55 text-sm'}`}>
+                                      {item.title}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    {item.durationMinutes != null && (
+                                      <span className="text-white/25 text-[11px] hidden sm:block">
+                                        {formatDuration(item.durationMinutes)}
+                                      </span>
+                                    )}
+                                    {collab ? (
+                                      <div className="flex -space-x-2 shrink-0">
+                                        {collab.collaborators.map(c => {
+                                          const ea = event.eventArtists?.find(e => e.id === c.id);
+                                          const imgUrl = ea?.artist.imageUrl ? constructFullUrl(ea.artist.imageUrl) : null;
+                                          return imgUrl ? (
+                                            <img
+                                              key={c.id}
+                                              src={imgUrl}
+                                              alt={c.name}
+                                              className="w-10 h-10 rounded-lg object-cover border-2 border-[#0a0a0a] shrink-0"
+                                              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                            />
+                                          ) : null;
+                                        })}
+                                      </div>
+                                    ) : item.artistImageUrl ? (
+                                      <img
+                                        src={constructFullUrl(item.artistImageUrl)}
+                                        alt={item.artistName ?? item.title}
+                                        className="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0"
+                                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                      />
+                                    ) : null}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </motion.div>
                         );
                       })}
@@ -750,6 +787,65 @@ const EventDetails: React.FC = () => {
 
       {/* Artist modal */}
       <ArtistModal artist={selectedArtist} onClose={() => setSelectedArtist(null)} isAdmin={false} />
+
+      {/* Collab slot modal */}
+      <AnimatePresence>
+        {selectedCollabArtists && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSelectedCollabArtists(null)}
+            />
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="pointer-events-auto w-full max-w-lg bg-[#0e0e0e] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07]">
+                  <div>
+                    <p className="text-white/40 text-[11px] tracking-widest uppercase font-mono mb-0.5">Collaboration</p>
+                    <h3 className="text-white font-bold text-lg">{selectedCollabArtists.map(a => a.name).join(' & ')}</h3>
+                  </div>
+                  <button
+                    onClick={() => setSelectedCollabArtists(null)}
+                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-4 h-4 text-white/60" />
+                  </button>
+                </div>
+                <div className="p-6 flex flex-col gap-3">
+                  {selectedCollabArtists.map(artist => (
+                    <button
+                      key={artist.id}
+                      onClick={() => { setSelectedCollabArtists(null); setSelectedArtist(artist); }}
+                      className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors text-left w-full"
+                    >
+                      {artist.imageUrl ? (
+                        <img
+                          src={constructFullUrl(artist.imageUrl)}
+                          alt={artist.name}
+                          className="w-14 h-14 rounded-xl object-cover shrink-0 border border-white/10"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-white/10 shrink-0 flex items-center justify-center text-white/30 text-xl font-bold">
+                          {artist.name[0]}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-white font-semibold text-base truncate">{artist.name}</p>
+                        {artist.genre && <p className="text-white/40 text-sm truncate">{artist.genre}</p>}
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-white/25 shrink-0 ml-auto" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
