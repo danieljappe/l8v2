@@ -1,420 +1,732 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef } from 'react';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useInView,
+} from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Music, Ticket, AlertCircle, Camera } from 'lucide-react';
-import Header from '../components/Header';
+import {
+  Calendar, Clock, MapPin, Music, Ticket,
+  AlertCircle, Camera, ChevronDown, ExternalLink,
+} from 'lucide-react';
 import ArtistModal from '../components/ArtistModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useEvent } from '../hooks/useApi';
 import type { Artist } from '../services/api';
+import type { TimelineItem } from '../types/admin';
 import { constructFullUrl } from '../utils/imageUtils';
 import VenueMapEmbed from '../components/VenueMapEmbed';
 import { getAvailabilityStatus } from '../utils/ticketAvailability';
 
-const EventDetails: React.FC = () => {
-  const { eventName } = useParams();
-  const navigate = useNavigate();
-  const [selectedArtist, setSelectedArtist] = React.useState<Artist | null>(null);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  // Validate eventName before making API call
-  const isValidEventName = eventName && typeof eventName === 'string' && eventName.trim() !== '';
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
 
-  // Fetch event data from API only if eventName is valid
-  const { data: event, loading, error } = useEvent(isValidEventName ? eventName : '');
+function minutesToTime(mins: number): string {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
 
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen overflow-x-hidden">
-        <Header />
-        <div className="flex items-center justify-center h-[60vh]">
-          <LoadingSpinner size="lg" text="Loading event details..." />
-        </div>
-      </div>
-    );
+function formatDuration(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function computeEffectiveTimes(items: TimelineItem[]): (string | null)[] {
+  const result: (string | null)[] = [];
+  let lastEnd: number | null = null;
+  for (const item of items) {
+    if (item.startTime) {
+      result.push(item.startTime);
+      lastEnd = item.durationMinutes != null
+        ? timeToMinutes(item.startTime) + item.durationMinutes
+        : null;
+    } else if (lastEnd !== null) {
+      result.push(minutesToTime(lastEnd));
+      lastEnd = item.durationMinutes != null ? lastEnd + item.durationMinutes : null;
+    } else {
+      result.push(null);
+      lastEnd = null;
+    }
   }
+  return result;
+}
 
-  // Show error state for invalid event name
-  if (!isValidEventName) {
-    return (
-      <div className="min-h-screen overflow-x-hidden">
-        <Header />
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="text-center">
-            <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Invalid Event Name</h2>
-            <p className="text-white/70 mb-4">The event name in the URL is not valid.</p>
-            <button 
-              onClick={() => navigate('/events')}
-              className="bg-l8-blue hover:bg-l8-blue-dark text-white px-6 py-3 rounded-lg transition-colors"
-            >
-              Back to Events
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+const TYPE_META: Record<string, { label: string; bg: string; color: string }> = {
+  artist_set: { label: 'Artist',  bg: 'rgba(0,192,255,0.14)',   color: '#00c0ff'                  },
+  dj_set:     { label: 'DJ Set',  bg: 'rgba(160,80,255,0.14)',  color: '#a050ff'                  },
+  break:      { label: 'Pause',   bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.38)'   },
+  talk:       { label: 'Talk',    bg: 'rgba(20,200,180,0.12)',  color: '#14c8b4'                  },
+  custom:     { label: 'Andet',   bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.38)'   },
+};
 
-  // Show error state
-  if (error || !event) {
-    return (
-      <div className="min-h-screen overflow-x-hidden">
-        <Header />
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="text-center">
-            <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Event Not Found</h2>
-            <p className="text-white/70 mb-4">The event you're looking for doesn't exist or has been removed.</p>
-            <button 
-              onClick={() => navigate('/events')}
-              className="bg-l8-blue hover:bg-l8-blue-dark text-white px-6 py-3 rounded-lg transition-colors"
-            >
-              Back to Events
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+// ─── FadeUp helper ────────────────────────────────────────────────────────────
 
-  // Check if event is upcoming or past
-  const isUpcoming = new Date(event.date) >= new Date();
+const FadeUp: React.FC<{ children: React.ReactNode; delay?: number; className?: string }> = ({
+  children, delay = 0, className = '',
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-60px 0px' });
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial={{ opacity: 0, y: 28 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+};
 
-  // Billetto link for ticket purchase
-  const billettoLink = event.billettoURL || 'https://billetto.dk';
+// ─── Section label ────────────────────────────────────────────────────────────
+
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p className="text-[10px] tracking-[0.45em] uppercase text-white/30 mb-3">{children}</p>
+);
+
+// ─── Ticket widget (desktop sidebar) ─────────────────────────────────────────
+
+interface TicketWidgetProps {
+  billettoLink: string;
+  billettoData?: { maxCapacity: number | null; ticketsAvailable: number | null; lastSyncedAt: string };
+  isUpcoming: boolean;
+  title: string;
+}
+
+const TicketWidget: React.FC<TicketWidgetProps> = ({ billettoLink, billettoData, isUpcoming, title }) => {
+  const avail = getAvailabilityStatus(billettoData);
+  const { ticketsAvailable, maxCapacity } = billettoData ?? {};
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
-      {/* Header */}
-      <Header />
+    <div className="rounded-2xl border border-l8-blue/20 bg-white/[0.04] backdrop-blur-xl overflow-hidden">
+      <div className="h-[1.5px] w-full bg-gradient-to-r from-transparent via-l8-blue/50 to-transparent" />
+      <div className="p-6">
+        <SectionLabel>Billetter</SectionLabel>
+        <p className="text-white font-semibold text-base mb-5 line-clamp-2 leading-snug">{title}</p>
 
-      {/* Hero Section */}
-      <div className="relative h-[60vh] min-h-[500px] w-full overflow-hidden">
-        <div className="absolute inset-0">
-          <img 
-            src={event.imageUrl ? constructFullUrl(event.imageUrl) : (event.venue?.imageUrl ? constructFullUrl(event.venue.imageUrl) : 'https://via.placeholder.com/1920x1080/1a1a2e/ffffff?text=Event+Image')} 
-            alt={event.title}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              // Fallback to venue image or stock photo if event image fails to load
-              const target = e.target as HTMLImageElement;
-              if (event.venue?.imageUrl && target.src !== constructFullUrl(event.venue.imageUrl)) {
-                target.src = constructFullUrl(event.venue.imageUrl);
-              } else if (target.src !== 'https://via.placeholder.com/1920x1080/1a1a2e/ffffff?text=Event+Image') {
-                target.src = 'https://via.placeholder.com/1920x1080/1a1a2e/ffffff?text=Event+Image';
-              }
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-l8-dark/90"></div>
-        </div>
-        
-        {/* Event Title and Info */}
-        <div className="absolute bottom-0 left-0 right-0 p-8">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-            {event.title}
-          </h1>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="flex items-center space-x-3 text-white/80 bg-white/10 backdrop-blur-sm p-3 rounded-xl">
-              <Calendar className="w-5 h-5 text-l8-beige" />
-              <div>
-                <p className="text-sm text-white/60">Dato</p>
-                <p className="font-semibold">
-                  {new Date(event.date).toLocaleDateString('da-DK', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 text-white/80 bg-white/10 backdrop-blur-sm p-3 rounded-xl">
-              <Clock className="w-5 h-5 text-l8-beige" />
-              <div>
-                <p className="text-sm text-white/60">Tidspunkt</p>
-                <p className="font-semibold">{event.startTime || '21:00'}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 text-white/80 bg-white/10 backdrop-blur-sm p-3 rounded-xl">
-              <MapPin className="w-5 h-5 text-l8-beige" />
-              <div>
-                <p className="text-sm text-white/60">Sted</p>
-                <p className="font-semibold">{event.venue?.name || 'TBA'}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="relative z-10 bg-gradient-to-b from-l8-dark/80 via-black/50 to-l8-dark/80 min-h-screen">
-        <div className="container mx-auto px-4 py-12">
-          <div className="max-w-6xl mx-auto">
-            {/* Description */}
-            <div className="bg-black/30 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 mb-8">
-              <p className="text-white leading-relaxed text-lg">
-                {event.description}
-              </p>
-            </div>
-
-            {/* Gallery Images Section */}
-            {event.galleryImages && event.galleryImages.length > 0 && (
-              <div className="bg-black/30 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 flex items-center">
-                  <Camera className="w-6 h-6 mr-2 text-l8-beige" />
-                  Galleri
-                </h2>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {event.galleryImages
-                    .filter(img => img.isPublished)
-                    .sort((a, b) => a.orderIndex - b.orderIndex)
-                    .map((image) => (
-                    <motion.div
-                      key={image.id}
-                      whileHover={{ scale: 1.02, y: -5 }}
-                      className="group relative bg-black/20 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/20 cursor-pointer"
-                    >
-                      <div className="aspect-square relative overflow-hidden">
-                        <img 
-                          src={image.largeUrl ? constructFullUrl(image.largeUrl) : 
-                               image.mediumUrl ? constructFullUrl(image.mediumUrl) : 
-                               image.url ? constructFullUrl(image.url) : 
-                               'https://via.placeholder.com/400x400/1a1a2e/ffffff?text=Image'} 
-                          alt={image.caption || 'Event gallery image'}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            if (target.src !== 'https://via.placeholder.com/400x400/1a1a2e/ffffff?text=Image') {
-                              target.src = 'https://via.placeholder.com/400x400/1a1a2e/ffffff?text=Image';
-                            }
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      </div>
-                      
-                      {(image.caption || image.photographer) && (
-                        <div className="absolute bottom-0 left-0 right-0 p-3 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                          {image.caption && (
-                            <p className="text-white text-sm font-medium mb-1 line-clamp-2">
-                              {image.caption}
-                            </p>
-                          )}
-                          {image.photographer && (
-                            <p className="text-white/70 text-xs">
-                              Foto: {image.photographer}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
+        {isUpcoming ? (
+          <>
+            {avail === 'sold_out' && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-400/20">
+                <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                <span className="text-red-300 text-sm font-medium">Udsolgt</span>
               </div>
             )}
-
-            {/* Artists Section */}
-            {event.eventArtists && event.eventArtists.length > 0 && (
-              <div className="bg-black/30 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 flex items-center">
-                  <Music className="w-6 h-6 mr-2 text-l8-beige" />
-                  Kunstnere
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {event.eventArtists.map((eventArtist) => (
-                    <motion.div
-                      key={eventArtist.id}
-                      whileHover={{ 
-                        scale: 1.02, 
-                        y: -5,
-                        transition: { duration: 0.2 }
-                      }}
-                      onClick={() => setSelectedArtist(eventArtist.artist)}
-                      className="group relative bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/20 cursor-pointer overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-l8-blue/20 to-l8-blue-light/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <div className="relative flex items-start space-x-4">
-                        <motion.div 
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                          className="w-16 h-16 rounded-xl bg-gradient-to-br from-l8-blue to-l8-blue-light flex-shrink-0 overflow-hidden"
-                        >
-                          <img 
-                            src={eventArtist.artist.imageUrl ? constructFullUrl(eventArtist.artist.imageUrl) : 'https://via.placeholder.com/300x300/1a1a2e/ffffff?text=Artist'} 
-                            alt={eventArtist.artist.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Fallback to stock photo if artist image fails to load
-                              const target = e.target as HTMLImageElement;
-                              if (target.src !== 'https://via.placeholder.com/300x300/1a1a2e/ffffff?text=Artist') {
-                                target.src = 'https://via.placeholder.com/300x300/1a1a2e/ffffff?text=Artist';
-                              }
-                            }}
-                          />
-                        </motion.div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-l8-beige transition-colors duration-300">
-                            {eventArtist.artist.name}
-                          </h3>
-                          <p className="text-l8-beige text-sm mb-2">{eventArtist.artist.genre}</p>
-                          <p className="text-white/90 text-sm line-clamp-2">{eventArtist.artist.bio}</p>
-                          <div className="mt-3 text-l8-beige text-sm font-medium">
-                            Klik for at læse mere →
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+            {avail === 'low' && ticketsAvailable != null && (
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-400/20">
+                  <motion.span
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="w-2 h-2 rounded-full bg-amber-400 shrink-0"
+                  />
+                  <span className="text-amber-300 text-sm font-medium">
+                    {ticketsAvailable} billetter tilbage
+                  </span>
                 </div>
-              </div>
-            )}
-
-            {/* Venue Information */}
-            {event.venue && (
-              <div className="bg-black/30 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 flex items-center">
-                  <MapPin className="w-6 h-6 mr-2 text-l8-beige" />
-                  Lokation
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-2xl font-semibold text-white">{event.venue.name}</h3>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-white/70">
-                      <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1">
-                        <MapPin className="w-4 h-4 text-l8-beige" />
-                        <span>{event.venue.address}</span>
-                      </div>
-                      {event.venue.city && (
-                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1">
-                          <span className="w-2 h-2 rounded-full bg-l8-beige inline-block" />
-                          <span>{event.venue.city}</span>
-                        </div>
-                      )}
-                    </div>
-                    {event.venue.description && (
-                      <p className="text-white/80 text-sm leading-relaxed">
-                        {event.venue.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {event.venue.mapEmbedHtml && (
-                  <div className="mt-6">
-                    <div className="bg-black/20 rounded-2xl p-3 border border-white/10">
-                      <VenueMapEmbed
-                        embedHtml={event.venue.mapEmbedHtml}
-                        title={`Kort over ${event.venue.name}`}
-                        height={360}
-                      />
-                    </div>
+                {maxCapacity != null && (
+                  <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-amber-400 h-1.5 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min((ticketsAvailable / maxCapacity) * 100, 100)}%` }}
+                    />
                   </div>
                 )}
               </div>
             )}
-
-            {/* Tickets Section - Only show for upcoming events */}
-            {isUpcoming && (
-              <div className="bg-black/30 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 flex items-center">
-                  <Ticket className="w-6 h-6 mr-2 text-l8-beige" />
-                  Billetter
-                </h2>
-
-                <div className="max-w-md mx-auto">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -5 }}
-                    className="bg-black/20 backdrop-blur-sm rounded-2xl p-8 border border-white/20 text-center"
-                  >
-                    <div className="mb-6">
-                      <h3 className="text-2xl font-semibold text-white mb-2">Event Billet</h3>
-
-                      {/* Ticket availability indicator */}
-                      {(() => {
-                        const avail = getAvailabilityStatus(event.billettoData);
-                        const { ticketsAvailable, maxCapacity } = event.billettoData ?? {};
-                        if (avail === 'sold_out') return (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-500/20 text-red-300 border border-red-400/30">
-                            Udsolgt
-                          </span>
-                        );
-                        if (avail === 'low' && ticketsAvailable != null) return (
-                          <div className="space-y-2">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                              Få billetter tilbage — {ticketsAvailable} tilbage
-                            </span>
-                            {maxCapacity && (
-                              <div className="w-full bg-white/10 rounded-full h-2">
-                                <div
-                                  className="bg-amber-400 h-2 rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.round((ticketsAvailable / maxCapacity) * 100)}%` }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                        return null;
-                      })()}
-                    </div>
-
-                    {getAvailabilityStatus(event.billettoData) === 'sold_out' ? (
-                      <div className="w-full bg-white/10 text-white/40 font-semibold py-4 px-6 rounded-xl text-center">
-                        Udsolgt
-                      </div>
-                    ) : (
-                      <motion.a
-                        href={billettoLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="inline-block w-full bg-gradient-to-r from-l8-blue to-l8-blue-light hover:from-l8-blue-dark hover:to-l8-blue text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
-                      >
-                        Køb Billet på Billetto
-                      </motion.a>
-                    )}
-
-                    <p className="text-white/60 text-sm mt-4">
-                      Du vil blive omdirigeret til Billetto for at gennemføre købet
-                    </p>
-                  </motion.div>
-                </div>
+            {avail === 'available' && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-green-500/10 border border-green-400/20">
+                <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                <span className="text-green-300 text-sm font-medium">Billetter tilgængelige</span>
               </div>
             )}
 
-            {/* Past Event Message */}
-            {!isUpcoming && (
-              <div className="bg-black/30 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 text-center">
-                <h2 className="text-2xl font-bold text-white mb-4">Event Afsluttet</h2>
-                <p className="text-white/70 mb-6">
-                  Dette event har allerede fundet sted. Tak til alle, der deltog og gjorde det til en fantastisk aften!
-                </p>
-                <button
-                  onClick={() => navigate('/events')}
-                  className="bg-l8-blue hover:bg-l8-blue-dark text-white font-semibold px-6 py-3 rounded-xl transition-colors"
-                >
-                  Se Andre Events
-                </button>
+            {avail === 'sold_out' ? (
+              <div className="w-full py-3.5 rounded-xl bg-white/5 text-white/30 font-semibold text-sm text-center">
+                Udsolgt
               </div>
+            ) : (
+              <motion.a
+                href={billettoLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.03, boxShadow: '0 0 28px rgba(0,192,255,0.3)' }}
+                whileTap={{ scale: 0.97 }}
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl
+                  bg-l8-blue text-l8-dark font-bold text-sm tracking-wide"
+              >
+                <Ticket className="w-4 h-4" />
+                Køb Billetter
+                <ExternalLink className="w-3 h-3 opacity-60" />
+              </motion.a>
             )}
-          </div>
-        </div>
-      </main>
-
-      {/* Artist Modal */}
-      <ArtistModal 
-        artist={selectedArtist} 
-        onClose={() => setSelectedArtist(null)} 
-        isAdmin={false}
-      />
+            <p className="text-white/25 text-[11px] text-center mt-3">Via Billetto — sikker betaling</p>
+          </>
+        ) : (
+          <p className="text-white/40 text-sm text-center py-3">Dette event er afholdt.</p>
+        )}
+      </div>
     </div>
   );
 };
 
-export default EventDetails; 
+// ─── Main component ───────────────────────────────────────────────────────────
+
+const EventDetails: React.FC = () => {
+  const { eventName } = useParams();
+  const navigate = useNavigate();
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [selectedArtist, setSelectedArtist] = React.useState<Artist | null>(null);
+
+  const isValidEventName = eventName && typeof eventName === 'string' && eventName.trim() !== '';
+  const { data: event, loading, error } = useEvent(isValidEventName ? eventName : '');
+
+  // Parallax
+  const { scrollYProgress: heroScroll } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const heroBgY      = useTransform(heroScroll, [0, 1], ['0%', '22%']);
+  const heroContentOp = useTransform(heroScroll, [0, 0.65], [1, 0]);
+  const scrollIndOp  = useTransform(heroScroll, [0, 0.15], [1, 0]);
+
+  // ── Loading / error states ────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <LoadingSpinner size="lg" text="Henter event…" />
+      </div>
+    );
+  }
+
+  if (!isValidEventName || error || !event) {
+    return (
+      <div className="flex items-center justify-center h-[60vh] px-6">
+        <div className="text-center">
+          <AlertCircle className="w-14 h-14 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">
+            {!isValidEventName ? 'Ugyldigt event navn' : 'Event ikke fundet'}
+          </h2>
+          <p className="text-white/50 mb-6 text-sm max-w-xs mx-auto">
+            {!isValidEventName
+              ? 'URL-adressen indeholder ikke et gyldigt event navn.'
+              : 'Dette event eksisterer ikke eller er blevet fjernet.'}
+          </p>
+          <motion.button
+            onClick={() => navigate('/events')}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className="px-6 py-3 rounded-full bg-l8-blue text-l8-dark font-semibold text-sm"
+          >
+            Tilbage til Events
+          </motion.button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Derived data ─────────────────────────────────────────────────────────
+
+  const isUpcoming = new Date(event.date) >= new Date();
+  const billettoLink = event.billettoURL || 'https://billetto.dk';
+  const heroImage = event.imageUrl
+    ? constructFullUrl(event.imageUrl)
+    : event.venue?.imageUrl
+      ? constructFullUrl(event.venue.imageUrl)
+      : null;
+
+  const timeline: TimelineItem[] = event.timeline ?? [];
+  const effectiveTimes = computeEffectiveTimes(timeline);
+  const totalRuntime = timeline.reduce((sum, i) => sum + (i.durationMinutes ?? 0), 0);
+
+  const publishedGallery = (event.galleryImages ?? [])
+    .filter(img => img.isPublished)
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  const formatDate = (d: string) => {
+    const s = new Date(d).toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="min-h-screen overflow-x-hidden">
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/*  HERO                                                              */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      <div ref={heroRef} className="relative h-screen overflow-hidden">
+
+        {/* Parallax background image */}
+        <motion.div className="absolute inset-0 scale-110" style={{ y: heroBgY }}>
+          {heroImage ? (
+            <img
+              src={heroImage}
+              alt={event.title}
+              className="w-full h-full object-cover"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-l8-blue-dark/50 to-[#050505]" />
+          )}
+        </motion.div>
+
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/55 to-[#050505]/15" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050505]/65 via-[#050505]/20 to-transparent" />
+
+        {/* Subtle dot grid */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+            WebkitMaskImage: 'radial-gradient(ellipse 100% 80% at 50% 100%, transparent 30%, black 80%)',
+            maskImage:        'radial-gradient(ellipse 100% 80% at 50% 100%, transparent 30%, black 80%)',
+          }}
+        />
+
+        {/* Hero content — fades out on scroll */}
+        <motion.div
+          style={{ opacity: heroContentOp }}
+          className="absolute bottom-0 left-0 right-0 z-10 px-6 sm:px-10 lg:px-16 pb-16 sm:pb-24 max-w-5xl"
+        >
+          {/* Status pill */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="inline-flex items-center gap-2 mb-5 px-4 py-1.5 rounded-full
+              border border-l8-blue/25 bg-l8-blue/10 text-l8-blue text-[10px] tracking-[0.35em] uppercase"
+          >
+            <motion.span
+              className="w-1.5 h-1.5 rounded-full bg-l8-blue"
+              animate={isUpcoming ? { opacity: [1, 0.2, 1] } : {}}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            {isUpcoming ? 'Kommende Begivenhed' : 'Afholdt'}
+          </motion.div>
+
+          {/* Title */}
+          <motion.h1
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.44, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            className="text-4xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-bold text-white
+              leading-[1.0] mb-6"
+          >
+            {event.title}
+          </motion.h1>
+
+          {/* Info chips */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.62, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-wrap items-center gap-2.5 mb-9"
+          >
+            <span className="flex items-center gap-2 px-3.5 py-1.5 rounded-full
+              bg-white/[0.08] border border-white/12 text-white/75 text-sm backdrop-blur-sm">
+              <Calendar className="w-3.5 h-3.5 text-l8-beige shrink-0" />
+              {formatDate(event.date)}
+            </span>
+            {event.startTime && (
+              <span className="flex items-center gap-2 px-3.5 py-1.5 rounded-full
+                bg-white/[0.08] border border-white/12 text-white/75 text-sm backdrop-blur-sm">
+                <Clock className="w-3.5 h-3.5 text-l8-beige shrink-0" />
+                {event.startTime}{event.endTime ? ` — ${event.endTime}` : ''}
+              </span>
+            )}
+            {event.venue && (
+              <span className="flex items-center gap-2 px-3.5 py-1.5 rounded-full
+                bg-white/[0.08] border border-white/12 text-white/75 text-sm backdrop-blur-sm">
+                <MapPin className="w-3.5 h-3.5 text-l8-beige shrink-0" />
+                {event.venue.name}
+              </span>
+            )}
+          </motion.div>
+
+          {/* CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.78, duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-wrap items-center gap-4"
+          >
+            {isUpcoming && (
+              <motion.a
+                href={billettoLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.05, boxShadow: '0 0 36px rgba(0,192,255,0.35)' }}
+                whileTap={{ scale: 0.96 }}
+                className="flex items-center gap-2.5 px-7 py-3.5 rounded-full
+                  bg-l8-blue text-l8-dark font-bold text-sm tracking-wide shadow-xl shadow-l8-blue/25"
+              >
+                <Ticket className="w-4 h-4" />
+                Køb Billetter
+              </motion.a>
+            )}
+            {timeline.length > 0 && (
+              <motion.button
+                onClick={() => document.getElementById('program')?.scrollIntoView({ behavior: 'smooth' })}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                className="flex items-center gap-2.5 px-7 py-3.5 rounded-full border border-white/20
+                  bg-white/[0.06] text-white/80 text-sm tracking-wide backdrop-blur-sm hover:bg-white/10 transition-colors"
+              >
+                Se Program
+                <ChevronDown className="w-4 h-4" />
+              </motion.button>
+            )}
+          </motion.div>
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          style={{ opacity: scrollIndOp }}
+          className="absolute bottom-8 right-8 sm:right-12 z-20 hidden sm:flex flex-col items-center
+            gap-2 text-white/25 text-[9px] tracking-[0.4em] uppercase pointer-events-none"
+        >
+          <span>Scroll</span>
+          <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+            <ChevronDown className="w-4 h-4" />
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/*  MAIN CONTENT                                                      */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      <div className="container mx-auto max-w-6xl px-4 py-16 sm:py-24 pb-32 lg:pb-24">
+        <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-16 lg:items-start">
+
+          {/* ── Left: primary content ─────────────────────────────────────── */}
+          <div className="space-y-20">
+
+            {/* Description */}
+            {event.description && (
+              <FadeUp>
+                <SectionLabel>Om Eventet</SectionLabel>
+                <p className="text-white/70 text-lg leading-relaxed">{event.description}</p>
+              </FadeUp>
+            )}
+
+            {/* Program / Timeline */}
+            {timeline.length > 0 && (
+              <FadeUp>
+                <div id="program">
+                  <SectionLabel>Program</SectionLabel>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8">Aftenens Forløb</h2>
+
+                  <div className="relative">
+                    {/* Connecting line */}
+                    <div className="absolute left-[15px] top-8 bottom-8 w-px bg-gradient-to-b from-l8-blue/40 via-white/10 to-transparent pointer-events-none" />
+
+                    <div className="space-y-0">
+                      {timeline.map((item, idx) => {
+                        const time = effectiveTimes[idx];
+                        const meta = TYPE_META[item.type] ?? TYPE_META.custom;
+                        const isArtistSlot = item.type === 'artist_set' || item.type === 'dj_set';
+
+                        return (
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, x: -14 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true, margin: '-20px' }}
+                            transition={{ duration: 0.5, delay: idx * 0.055, ease: [0.16, 1, 0.3, 1] }}
+                            className="flex items-center gap-4 py-3.5"
+                          >
+                            {/* Position dot */}
+                            <div
+                              className="relative z-10 w-8 h-8 rounded-full border flex items-center justify-center shrink-0 text-[11px] font-bold"
+                              style={{
+                                borderColor: isArtistSlot ? meta.color : 'rgba(255,255,255,0.1)',
+                                background:  isArtistSlot ? meta.bg   : 'rgba(255,255,255,0.03)',
+                                color:       meta.color,
+                              }}
+                            >
+                              {idx + 1}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 flex items-center justify-between gap-3 min-w-0">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center flex-wrap gap-2 mb-0.5">
+                                  <span
+                                    className="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
+                                    style={{ background: meta.bg, color: meta.color }}
+                                  >
+                                    {meta.label}
+                                  </span>
+                                  {time && (
+                                    <span className="text-white/35 text-[11px] font-mono shrink-0">{time}</span>
+                                  )}
+                                </div>
+                                <p className={`truncate font-semibold ${isArtistSlot ? 'text-white text-base' : 'text-white/55 text-sm'}`}>
+                                  {item.title}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-3 shrink-0">
+                                {item.durationMinutes != null && (
+                                  <span className="text-white/25 text-[11px] hidden sm:block">
+                                    {formatDuration(item.durationMinutes)}
+                                  </span>
+                                )}
+                                {item.artistImageUrl && (
+                                  <img
+                                    src={constructFullUrl(item.artistImageUrl)}
+                                    alt={item.artistName ?? item.title}
+                                    className="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0"
+                                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Total runtime */}
+                    {totalRuntime > 0 && (
+                      <div className="mt-4 pt-4 border-t border-white/[0.07] flex items-center justify-between">
+                        <span className="text-white/30 text-[10px] tracking-[0.3em] uppercase">Total spilletid</span>
+                        <span className="text-white/55 text-sm font-medium">{formatDuration(totalRuntime)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </FadeUp>
+            )}
+
+            {/* Artists */}
+            {event.eventArtists && event.eventArtists.length > 0 && (
+              <FadeUp>
+                <SectionLabel>Kunstnere</SectionLabel>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8">
+                  <Music className="inline w-6 h-6 mr-2 mb-1 text-l8-beige" />
+                  På Scenen
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {event.eventArtists.map((ea, idx) => (
+                    <motion.div
+                      key={ea.id}
+                      initial={{ opacity: 0, y: 18 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: '-20px' }}
+                      transition={{ duration: 0.5, delay: idx * 0.09, ease: [0.16, 1, 0.3, 1] }}
+                      whileHover={{ y: -4 }}
+                      onClick={() => setSelectedArtist(ea.artist)}
+                      className="group cursor-pointer rounded-2xl border border-white/10
+                        bg-white/[0.04] overflow-hidden
+                        hover:border-white/20 hover:bg-white/[0.07] transition-all duration-300"
+                    >
+                      <div className="flex items-stretch">
+                        {/* Photo */}
+                        <div className="w-28 h-28 sm:w-32 sm:h-32 shrink-0 overflow-hidden">
+                          <img
+                            src={ea.artist.imageUrl
+                              ? constructFullUrl(ea.artist.imageUrl)
+                              : 'https://via.placeholder.com/300x300/0d0d0d/444444?text=A'}
+                            alt={ea.artist.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={e => {
+                              const t = e.target as HTMLImageElement;
+                              if (!t.src.includes('placeholder')) t.src = 'https://via.placeholder.com/300x300/0d0d0d/444444?text=A';
+                            }}
+                          />
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 p-4 flex flex-col justify-center min-w-0">
+                          <p className="text-l8-beige text-[10px] tracking-[0.3em] uppercase mb-1">
+                            {ea.artist.genre || 'Musik'}
+                          </p>
+                          <h3 className="text-white font-bold text-base mb-1 truncate group-hover:text-l8-beige transition-colors">
+                            {ea.artist.name}
+                          </h3>
+                          <p className="text-white/45 text-xs leading-relaxed line-clamp-2">{ea.artist.bio}</p>
+                          <span className="mt-2 text-l8-blue text-[11px]">Læs mere →</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </FadeUp>
+            )}
+
+            {/* Gallery */}
+            {publishedGallery.length > 0 && (
+              <FadeUp>
+                <SectionLabel>Galleri</SectionLabel>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8">
+                  <Camera className="inline w-6 h-6 mr-2 mb-1 text-l8-beige" />
+                  Billeder
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {publishedGallery.map((img, idx) => (
+                    <motion.div
+                      key={img.id}
+                      initial={{ opacity: 0, scale: 0.94 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true, margin: '-16px' }}
+                      transition={{ duration: 0.45, delay: idx * 0.05 }}
+                      whileHover={{ scale: 1.03, zIndex: 10 }}
+                      className="group relative rounded-xl overflow-hidden border border-white/10 aspect-square"
+                    >
+                      <img
+                        src={img.largeUrl ? constructFullUrl(img.largeUrl) : img.url ? constructFullUrl(img.url) : 'https://via.placeholder.com/400x400'}
+                        alt={img.caption || ''}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={e => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400/0d0d0d/444444?text=Billede'; }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      {img.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                          <p className="text-white text-xs font-medium line-clamp-2">{img.caption}</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              </FadeUp>
+            )}
+
+            {/* Venue */}
+            {event.venue && (
+              <FadeUp>
+                <SectionLabel>Lokation</SectionLabel>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">{event.venue.name}</h2>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/55 text-xs">
+                    <MapPin className="w-3.5 h-3.5 text-l8-beige shrink-0" />{event.venue.address}
+                  </span>
+                  {event.venue.city && (
+                    <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/55 text-xs">
+                      {event.venue.city}
+                    </span>
+                  )}
+                </div>
+                {event.venue.description && (
+                  <p className="text-white/45 text-sm leading-relaxed mb-6">{event.venue.description}</p>
+                )}
+                {event.venue.mapEmbedHtml && (
+                  <div className="rounded-2xl overflow-hidden border border-white/10">
+                    <VenueMapEmbed
+                      embedHtml={event.venue.mapEmbedHtml}
+                      title={`Kort over ${event.venue.name}`}
+                      height={360}
+                    />
+                  </div>
+                )}
+              </FadeUp>
+            )}
+
+            {/* Past event message */}
+            {!isUpcoming && (
+              <FadeUp>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
+                  <p className="text-white/55 mb-6 leading-relaxed text-sm">
+                    Dette event er afholdt. Tak til alle der deltog og gjorde aftenen uforglemmelig.
+                  </p>
+                  <motion.button
+                    onClick={() => navigate('/events')}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="px-6 py-3 rounded-full bg-l8-blue text-l8-dark font-semibold text-sm"
+                  >
+                    Se Kommende Events
+                  </motion.button>
+                </div>
+              </FadeUp>
+            )}
+          </div>
+
+          {/* ── Right: sticky ticket widget (desktop only) ────────────────── */}
+          <div className="hidden lg:block">
+            <div className="sticky top-28 space-y-4">
+              <TicketWidget
+                billettoLink={billettoLink}
+                billettoData={event.billettoData}
+                isUpcoming={isUpcoming}
+                title={event.title}
+              />
+
+              {/* Quick info recap */}
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 space-y-3.5">
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="w-4 h-4 text-l8-beige shrink-0" />
+                  <span className="text-white/55">{formatDate(event.date)}</span>
+                </div>
+                {event.startTime && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Clock className="w-4 h-4 text-l8-beige shrink-0" />
+                    <span className="text-white/55">
+                      {event.startTime}{event.endTime ? ` — ${event.endTime}` : ''}
+                    </span>
+                  </div>
+                )}
+                {event.venue && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <MapPin className="w-4 h-4 text-l8-beige shrink-0" />
+                    <span className="text-white/55">{event.venue.name}</span>
+                  </div>
+                )}
+                {event.eventArtists?.length > 0 && (
+                  <div className="flex items-start gap-3 text-sm">
+                    <Music className="w-4 h-4 text-l8-beige shrink-0 mt-0.5" />
+                    <span className="text-white/55 leading-relaxed">
+                      {event.eventArtists.map(ea => ea.artist.name).join(' · ')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mobile sticky bottom CTA ──────────────────────────────────────── */}
+      {isUpcoming && (
+        <motion.div
+          initial={{ y: 80 }}
+          animate={{ y: 0 }}
+          transition={{ delay: 1.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 px-4 py-4
+            bg-[#050505]/90 backdrop-blur-xl border-t border-white/10"
+        >
+          <motion.a
+            href={billettoLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center justify-center gap-2.5 w-full py-4 rounded-xl
+              bg-l8-blue text-l8-dark font-bold tracking-wide shadow-xl shadow-l8-blue/25"
+          >
+            <Ticket className="w-4 h-4" />
+            Køb Billetter
+          </motion.a>
+        </motion.div>
+      )}
+
+      {/* Artist modal */}
+      <ArtistModal artist={selectedArtist} onClose={() => setSelectedArtist(null)} isAdmin={false} />
+    </div>
+  );
+};
+
+export default EventDetails;

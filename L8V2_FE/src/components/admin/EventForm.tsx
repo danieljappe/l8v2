@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Event, Artist, Venue } from '../../types/admin';
+import TimelineEditor from './TimelineEditor';
 
 interface EventDraft {
   title: string; description: string; date: string; time: string; endTime: string;
@@ -9,7 +10,7 @@ interface EventDraft {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const emptyEventDraft: EventDraft = {
-  title: '', description: '', date: '', time: '', endTime: '',
+  title: '', description: '', date: '', time: '20:00', endTime: '',
   venue: '', artists: [], price: 0, capacity: 0,
   image: '', billettoURL: import.meta.env.DEV ? 'https://billetto.dk/e/test-event-123456' : '', status: 'upcoming',
 };
@@ -291,20 +292,23 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
                     onChange={e => set('date', e.target.value)}
                   />
                   <input
-                    type="time"
-                    className="a-input"
+                    type="text"
+                    className="a-input a-input-mono"
+                    placeholder="HH:MM"
+                    maxLength={5}
                     value={form.time}
                     onChange={e => set('time', e.target.value)}
                   />
                   <input
-                    type="time"
-                    className="a-input"
-                    placeholder="End"
+                    type="text"
+                    className="a-input a-input-mono"
+                    placeholder="HH:MM"
+                    maxLength={5}
                     value={form.endTime}
                     onChange={e => set('endTime', e.target.value)}
                   />
                 </div>
-                <span className="hint">Start time — end time is optional.</span>
+                <span className="hint">24-hour format, e.g. 20:00 — end time optional.</span>
               </div>
 
               {/* Venue */}
@@ -360,6 +364,18 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
                   onChange={e => set('image', e.target.value)}
                 />
               </div>
+
+              {/* Running order — only in edit mode */}
+              {isEditing && event?.id && (
+                <div className="a-field full">
+                  <label>Running Order</label>
+                  <TimelineEditor
+                    eventId={event.id}
+                    eventArtists={event.eventArtists ?? []}
+                    initialTimeline={event.timeline ?? []}
+                  />
+                </div>
+              )}
 
               {/* Billetto */}
               <div className="a-field full">

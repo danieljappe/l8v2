@@ -59,7 +59,8 @@ function mapApiEventToAdminEvent(apiEvent: ApiEvent): Event {
     startTime: apiEvent.startTime,
     imageUrl: apiEvent.imageUrl,
     billettoURL: apiEvent.billettoURL,
-    updatedAt: apiEvent.updatedAt
+    updatedAt: apiEvent.updatedAt,
+    timeline: apiEvent.timeline ?? [],
   } as Event;
 }
 
@@ -275,11 +276,20 @@ export default function Admin() {
   // Event handlers (backend)
   const handleAddEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>) => {
     const res = await apiService.createEvent(mapAdminEventToApiEvent(eventData, venues));
-    if (res.data) {
-      setEvents((prev) => [...prev, mapApiEventToAdminEvent(res.data!)]);
-    } else {
+    if (!res.data) {
       alert(res.error || 'Failed to create event');
+      return;
     }
+    const newEventId = res.data.id;
+    const artistIds: string[] = eventData.artists ?? [];
+    await Promise.all(
+      artistIds.map(artistId =>
+        apiService.createEventArtist({ event: { id: newEventId }, artist: { id: artistId } })
+      )
+    );
+    // Re-fetch the event so eventArtists are populated in the list
+    const full = await apiService.getEvent(newEventId);
+    setEvents((prev) => [...prev, mapApiEventToAdminEvent(full.data ?? res.data!)]);
   };
 
   const handleUpdateEvent = async (updatedEvent: Event) => {

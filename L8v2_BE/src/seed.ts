@@ -150,9 +150,9 @@ async function seed() {
     console.log('🎭 Seeding event artists...');
     const eventArtistRepo = AppDataSource.getRepository(EventArtist);
     const eventArtists = await Promise.all([
-      { eventId: events[0].id, artistId: artists[0].id, performanceOrder: 1, performanceTime: '20:00', setDuration: 60 },
-      { eventId: events[0].id, artistId: artists[1].id, performanceOrder: 2, performanceTime: '21:00', setDuration: 90 },
-      { eventId: events[2].id, artistId: artists[4].id, performanceOrder: 1, performanceTime: '21:00', setDuration: 120 },
+      { eventId: events[0].id, artistId: artists[0].id },
+      { eventId: events[0].id, artistId: artists[1].id },
+      { eventId: events[2].id, artistId: artists[4].id },
     ].map(async ea => {
       const existing = await eventArtistRepo.findOneBy({ 
         event: { id: ea.eventId }, 
@@ -162,9 +162,6 @@ async function seed() {
         const eventArtist = eventArtistRepo.create({
           event: { id: ea.eventId },
           artist: { id: ea.artistId },
-          performanceOrder: ea.performanceOrder,
-          performanceTime: ea.performanceTime,
-          setDuration: ea.setDuration
         });
         const saved = await eventArtistRepo.save(eventArtist);
         console.log(`✅ Created event artist: ${artists.find(a => a.id === ea.artistId)?.name || 'Unknown'} for ${events.find(e => e.id === ea.eventId)?.title || 'Unknown'}`);

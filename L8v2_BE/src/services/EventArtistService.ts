@@ -48,25 +48,5 @@ export class EventArtistService {
     return this.eventArtistRepository.findArtistsByPerformanceTime(eventId);
   }
 
-  async updatePerformanceOrder(eventId: string, artistId: string, order: number): Promise<EventArtist | null> {
-    const eventArtist = await this.eventArtistRepository.findByEventAndArtist(eventId, artistId);
-    if (!eventArtist) return null;
-
-    return this.eventArtistRepository.update(eventArtist.id, { performanceOrder: order });
-  }
-
-  async updatePerformanceTime(eventId: string, artistId: string, time: string): Promise<EventArtist | null> {
-    const eventArtist = await this.eventArtistRepository.findByEventAndArtist(eventId, artistId);
-    if (!eventArtist) return null;
-
-    return this.eventArtistRepository.update(eventArtist.id, { performanceTime: time });
-  }
-
-  async updateSetDuration(eventId: string, artistId: string, duration: number): Promise<EventArtist | null> {
-    const eventArtist = await this.eventArtistRepository.findByEventAndArtist(eventId, artistId);
-    if (!eventArtist) return null;
-
-    return this.eventArtistRepository.update(eventArtist.id, { setDuration: duration });
-  }
 
 } 

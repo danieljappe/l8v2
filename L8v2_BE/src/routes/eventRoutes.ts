@@ -1,6 +1,10 @@
 import { Router, RequestHandler } from 'express';
 import { AppDataSource } from '../config/database';
 import { Event } from '../models/Event';
+import { EventArtist } from '../models/EventArtist';
+import { EventTimelineItem } from '../models/EventTimelineItem';
+import { GalleryImage } from '../models/GalleryImage';
+import { BillettoEventData } from '../models/BillettoEventData';
 import { authenticateJWT } from '../middleware/authMiddleware';
 import { slugify } from '../utils/slugUtils';
 import { MoreThanOrEqual, LessThan } from 'typeorm';
@@ -170,8 +174,29 @@ const getEventById: RequestHandler = async (req, res) => {
       res.status(404).json({ message: 'Event not found' });
       return;
     }
-    
-    res.json(event);
+
+    const timeline = await AppDataSource.query(
+      `SELECT
+         id,
+         event_id           AS "eventId",
+         position,
+         start_time         AS "startTime",
+         duration_minutes   AS "durationMinutes",
+         type,
+         title,
+         notes,
+         event_artist_id    AS "eventArtistId",
+         artist_id          AS "artistId",
+         artist_name        AS "artistName",
+         artist_genre       AS "artistGenre",
+         artist_image_url   AS "artistImageUrl"
+       FROM event_running_order
+       WHERE event_id = $1
+       ORDER BY position`,
+      [event.id]
+    );
+
+    res.json({ ...event, timeline });
   } catch (err) {
     console.error('Error fetching event:', err);
     res.status(500).json({ message: 'Error fetching event' });
@@ -206,6 +231,11 @@ const updateEvent: RequestHandler = async (req, res) => {
       return;
     }
     eventRepository.merge(event, req.body);
+    // If venueId was sent, reset the loaded venue object so TypeORM uses the
+    // new FK value instead of the stale hydrated relation.
+    if ('venueId' in req.body) {
+      event.venue = req.body.venueId ? { id: req.body.venueId } as import('../models/Venue').Venue : undefined;
+    }
     await eventRepository.save(event);
     
     // Refetch the event with relations to ensure all data is populated
@@ -224,14 +254,17 @@ const updateEvent: RequestHandler = async (req, res) => {
 // Delete event
 const deleteEvent: RequestHandler = async (req, res) => {
   try {
-    const event = await eventRepository.findOne({
-      where: { id: req.params.id },
-      relations: ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages']
-    });
+    const event = await eventRepository.findOne({ where: { id: req.params.id } });
     if (!event) {
       res.status(404).json({ message: 'Event not found' });
       return;
     }
+    const id = req.params.id;
+    // Delete all child records before removing the event (no ON DELETE CASCADE on these FKs)
+    await AppDataSource.getRepository(EventTimelineItem).delete({ eventId: id });
+    await AppDataSource.getRepository(EventArtist).delete({ event: { id } });
+    await AppDataSource.getRepository(GalleryImage).delete({ event: { id } });
+    await AppDataSource.getRepository(BillettoEventData).delete({ event: { id } });
     await eventRepository.remove(event);
     res.status(204).send();
   } catch (err) {

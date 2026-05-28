@@ -21,6 +21,7 @@ import authRoutes from './routes/authRoutes';
 import billettoRoutes from './routes/billettoRoutes';
 import statsRoutes from './routes/statsRoutes';
 import auditLogRoutes from './routes/auditLogRoutes';
+import timelineRoutes from './routes/timelineRoutes';
 import path from 'path';
 
 dotenv.config();
@@ -40,7 +41,7 @@ export function createApp(): Express {
       'https://www.l8events.dk'
     ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     optionsSuccessStatus: 200
   }));
@@ -122,6 +123,7 @@ export function createApp(): Express {
   app.use('/api/billetto', billettoRoutes);
   app.use('/api/stats', statsRoutes);
   app.use('/api/audit-logs', auditLogRoutes);
+  app.use('/api/timeline', timelineRoutes);
 
   // Swagger setup
   const swaggerOptions = {

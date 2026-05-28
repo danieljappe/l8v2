@@ -2668,6 +2668,7 @@
   grid-template-columns: 1.4fr 1fr 1fr;
   gap: 8px;
 }
+.admin-root .a-input-mono { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.02em; }
 
 /* combo (artist multi-select) */
 .admin-root .a-combo { position: relative; }
@@ -3561,4 +3562,234 @@
   .admin-root .a-sb { display: none; }
   .admin-root .a-inbox { grid-template-columns: 1fr; height: auto; }
   .admin-root .a-inbox-list { max-height: 400px; }
+}
+
+/* ─── Timeline Editor ──────────────────────────────────────────────────────── */
+.admin-root .a-tl { display: flex; flex-direction: column; gap: 0; }
+
+/* Bookings */
+.admin-root .a-tl-bookings { margin-bottom: 16px; }
+.admin-root .a-tl-bookings-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px;
+}
+.admin-root .a-tl-bookings-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-root .a-tl-booking-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 6px; border-radius: var(--r-sm);
+  background: var(--bg-2); border: 1px solid var(--line);
+  font-size: 12.5px; color: var(--ink-2); cursor: default;
+  user-select: none;
+}
+.admin-root .a-tl-booking-chip.is-draggable {
+  cursor: grab; border-style: dashed;
+  transition: border-color 80ms, background 80ms;
+}
+.admin-root .a-tl-booking-chip.is-draggable:hover {
+  border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+}
+.admin-root .a-tl-drag-overlay {
+  cursor: grabbing; box-shadow: 0 4px 16px rgba(0,0,0,.14);
+  border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+}
+.admin-root .a-tl-booking-chip img {
+  width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+}
+.admin-root .a-tl-booking-chip-placeholder {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--line); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Drop insertion line */
+.admin-root .a-tl-drop-line {
+  height: 2px; border-radius: 1px; background: var(--accent);
+  margin: 2px 0; box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.admin-root .a-tl-drop-line-end { margin-top: 4px; }
+.admin-root .a-tl-drop-empty {
+  padding: 16px; border-radius: var(--r-sm); text-align: center;
+  border: 2px dashed var(--accent); color: var(--accent);
+  font-size: 12.5px; background: var(--accent-soft);
+}
+.admin-root .a-tl-append-zone {
+  min-height: 40px; border-radius: var(--r-sm); margin-top: 4px;
+  border: 2px dashed transparent; transition: border-color 100ms, background 100ms;
+}
+.admin-root .a-tl-append-zone.is-over {
+  border-color: var(--accent); background: var(--accent-soft);
+}
+
+/* Items list */
+.admin-root .a-tl-list { display: flex; flex-direction: column; }
+
+/* Single item card */
+.admin-root .a-tl-item {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 8px 10px;
+  transition: box-shadow 80ms ease;
+  position: relative;
+}
+.admin-root .a-tl-item.is-dragging {
+  box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 100;
+}
+
+/* Drag handle */
+.admin-root .a-tl-handle {
+  cursor: grab; color: var(--ink-3); flex-shrink: 0;
+  padding: 2px 2px; display: flex; align-items: center;
+  touch-action: none;
+}
+.admin-root .a-tl-handle:active { cursor: grabbing; }
+.admin-root .a-tl-handle svg { width: 14px; height: 14px; }
+
+/* Position badge */
+.admin-root .a-tl-pos {
+  font-size: 11px; font-weight: 700; color: var(--ink-3);
+  width: 18px; text-align: center; flex-shrink: 0;
+}
+
+/* Type badge */
+.admin-root .a-tl-type {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  flex-shrink: 0; white-space: nowrap;
+}
+.admin-root .a-tl-type svg { width: 11px; height: 11px; }
+
+/* Artist photo */
+.admin-root .a-tl-photo {
+  width: 28px; height: 28px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+}
+.admin-root .a-tl-photo-placeholder {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--line); flex-shrink: 0;
+}
+
+/* Title */
+.admin-root .a-tl-title {
+  flex: 1; font-size: 13px; font-weight: 500;
+  color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  min-width: 0;
+}
+
+/* Time fields */
+.admin-root .a-tl-times {
+  display: flex; align-items: flex-end; gap: 6px; flex-shrink: 0;
+}
+.admin-root .a-tl-time-field {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.admin-root .a-tl-field-lbl {
+  font-size: 9.5px; color: var(--ink-3); text-transform: uppercase;
+  letter-spacing: 0.05em; line-height: 1; padding: 0 2px;
+}
+.admin-root .a-tl-dur-wrap {
+  display: flex; align-items: center; gap: 3px;
+}
+.admin-root .a-tl-time-input {
+  width: 56px; font-size: 12px; padding: 3px 6px;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: transparent; color: var(--ink-2);
+  font-family: var(--font-mono);
+  transition: border-color 80ms ease, background 80ms ease;
+}
+.admin-root .a-tl-time-input:hover { border-color: var(--line); background: var(--bg-2); }
+.admin-root .a-tl-time-input:focus {
+  outline: none; border-color: var(--accent); background: var(--surface);
+  color: var(--ink);
+}
+.admin-root .a-tl-time-input.is-computed { color: var(--ink-3); }
+.admin-root .a-tl-dur-input {
+  width: 44px; font-size: 12px; padding: 3px 4px;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: transparent; color: var(--ink-2);
+  font-family: var(--font-mono); text-align: right;
+  transition: border-color 80ms ease, background 80ms ease;
+}
+.admin-root .a-tl-dur-input:hover { border-color: var(--line); background: var(--bg-2); }
+.admin-root .a-tl-dur-input:focus {
+  outline: none; border-color: var(--accent); background: var(--surface);
+  color: var(--ink);
+}
+.admin-root .a-tl-dur-suffix {
+  font-size: 11px; color: var(--ink-3); flex-shrink: 0;
+}
+
+/* Warning chip */
+.admin-root .a-tl-warn {
+  font-size: 11px; color: var(--warn); background: var(--warn-soft);
+  padding: 2px 6px; border-radius: 10px; flex-shrink: 0; white-space: nowrap;
+}
+
+/* Delete button */
+.admin-root .a-tl-del {
+  flex-shrink: 0; padding: 4px; border-radius: var(--r-sm);
+  color: var(--ink-3); background: transparent; border: none;
+  cursor: pointer; display: flex; align-items: center;
+  transition: color 80ms ease, background 80ms ease;
+}
+.admin-root .a-tl-del:hover { color: var(--danger); background: var(--danger-soft); }
+.admin-root .a-tl-del svg { width: 13px; height: 13px; }
+
+/* Add-between row */
+.admin-root .a-tl-add-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 2px 0; min-height: 20px;
+}
+.admin-root .a-tl-add-row::before,
+.admin-root .a-tl-add-row::after {
+  content: ''; flex: 1; height: 1px; background: var(--line-2);
+}
+.admin-root .a-tl-add-btn {
+  flex-shrink: 0; width: 22px; height: 22px;
+  border-radius: 50%; border: 1px dashed var(--line);
+  background: transparent; color: var(--ink-3);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1; padding: 0;
+  transition: border-color 80ms ease, color 80ms ease, background 80ms ease;
+}
+.admin-root .a-tl-add-btn:hover {
+  border-color: var(--accent); color: var(--accent); background: var(--accent-soft);
+}
+
+/* Inline add form */
+.admin-root .a-tl-add-form {
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 12px 12px 10px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.admin-root .a-tl-add-form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.admin-root .a-tl-type-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.admin-root .a-tl-type-btn {
+  padding: 4px 10px; border-radius: 20px; border: 1px solid var(--line);
+  font-size: 12px; font-weight: 500; cursor: pointer; background: var(--surface);
+  color: var(--ink-2); transition: all 80ms ease;
+}
+.admin-root .a-tl-type-btn.is-on {
+  border-color: transparent; color: var(--accent-ink);
+}
+.admin-root .a-tl-add-form input, .admin-root .a-tl-add-form select {
+  font-size: 12.5px; padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: var(--r-sm); background: var(--surface); color: var(--ink);
+  outline: none; min-width: 0;
+}
+.admin-root .a-tl-add-form input:focus,
+.admin-root .a-tl-add-form select:focus { border-color: var(--accent); }
+.admin-root .a-tl-add-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* Footer: total runtime + warnings */
+.admin-root .a-tl-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 2px 2px; font-size: 12px; color: var(--ink-3);
+  border-top: 1px solid var(--line-2); margin-top: 8px;
+}
+.admin-root .a-tl-footer-warnings {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.admin-root .a-tl-empty {
+  padding: 24px 0; text-align: center; font-size: 13px; color: var(--ink-3);
 }

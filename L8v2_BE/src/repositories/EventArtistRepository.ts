@@ -27,23 +27,15 @@ export class EventArtistRepository extends BaseRepository<EventArtist> {
 
   async findArtistsByPerformanceOrder(eventId: string): Promise<EventArtist[]> {
     return this.repository.find({
-      where: {
-        event: { id: eventId }
-      },
-      order: {
-        performanceOrder: 'ASC'
-      }
+      where: { event: { id: eventId } },
+      order: { createdAt: 'ASC' }
     });
   }
 
   async findArtistsByPerformanceTime(eventId: string): Promise<EventArtist[]> {
     return this.repository.find({
-      where: {
-        event: { id: eventId }
-      },
-      order: {
-        performanceTime: 'ASC'
-      }
+      where: { event: { id: eventId } },
+      order: { createdAt: 'ASC' }
     });
   }
 } 

@@ -1,4 +1,4 @@
-import type { AuditLogPage } from '../types/admin';
+import type { AuditLogPage, TimelineItem, TimelineItemType } from '../types/admin';
 
 // API Base URL - adjust this based on your backend deployment
 const API_BASE_URL = import.meta.env.VITE_API_URL || (() => {
@@ -138,6 +138,14 @@ class ApiClient {
     });
   }
 
+  // PATCH request
+  async patch<T>(endpoint: string, data: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   // DELETE request
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' });
@@ -246,6 +254,7 @@ export interface Event {
     ticketsAvailable: number | null;
     lastSyncedAt: string;
   };
+  timeline?: TimelineItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -430,6 +439,24 @@ export const apiService = {
     if (params.action) qs.set('action', params.action);
     return apiClient.get<AuditLogPage>(`/audit-logs?${qs.toString()}`);
   },
+
+  // Timeline
+  getTimeline: (eventId: string) =>
+    apiClient.get<TimelineItem[]>(`/timeline/${eventId}`),
+  addTimelineItem: (eventId: string, payload: {
+    type: TimelineItemType;
+    title?: string;
+    eventArtistId?: string;
+    startTime?: string;
+    durationMinutes?: number;
+    notes?: string;
+  }) => apiClient.post<TimelineItem>(`/timeline/${eventId}`, payload),
+  reorderTimeline: (eventId: string, items: { id: string; position: number }[]) =>
+    apiClient.put<{ message: string }>(`/timeline/${eventId}/reorder`, { items }),
+  updateTimelineItem: (eventId: string, itemId: string, patch: Partial<TimelineItem>) =>
+    apiClient.patch<TimelineItem>(`/timeline/${eventId}/items/${itemId}`, patch),
+  deleteTimelineItem: (eventId: string, itemId: string) =>
+    apiClient.delete<null>(`/timeline/${eventId}/items/${itemId}`),
 
   // Artist image upload
   uploadArtistImage: async (file: File) => {

@@ -16,7 +16,7 @@
     "migration:custom": "ts-node run-migration.ts",
     "benchmark": "ts-node src/scripts/benchmark.ts",
     "lint": "eslint .",
-    "test": "jest",
+    "test": "jest --runInBand",
     "test:unit": "jest --selectProjects unit",
     "test:integration": "jest --selectProjects integration --runInBand",
     "test:coverage": "jest --coverage --coverageReporters=lcov --coverageReporters=text-summary --runInBand",

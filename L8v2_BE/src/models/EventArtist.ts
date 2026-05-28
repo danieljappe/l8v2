@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, Column, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Event } from './Event';
 import { Artist } from './Artist';
 
@@ -14,15 +14,6 @@ export class EventArtist {
   @ManyToOne(() => Artist, artist => artist.eventArtists)
   @JoinColumn()
   artist!: Artist;
-
-  @Column({ nullable: true })
-  performanceOrder?: number;
-
-  @Column({ nullable: true })
-  performanceTime?: string;
-
-  @Column({ nullable: true })
-  setDuration?: number;
 
   @CreateDateColumn()
   createdAt!: Date;

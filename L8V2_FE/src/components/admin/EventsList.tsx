@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Event, Artist, Venue } from '../../types/admin';
 import EventForm, { emptyEventDraft } from './EventForm';
+import apiService from '../../services/api';
 
 interface EventsListProps {
   events: Event[];
@@ -112,7 +113,12 @@ export default function EventsList({
     setSort(s => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'asc' });
   }
 
-  function handleEdit(ev: Event) { setEditingEvent(ev); setShowForm(true); }
+  async function handleEdit(ev: Event) {
+    setShowForm(true);
+    // Re-fetch to get fresh timeline data before opening the drawer
+    const res = await apiService.getEvent(ev.id);
+    setEditingEvent(res.data ? { ...ev, timeline: res.data.timeline ?? [] } : ev);
+  }
   function handleNew() { setEditingEvent(null); setShowForm(true); }
   function handleDelete(ev: Event) { setConfirmDel(ev); }
 
