@@ -14,6 +14,8 @@ import apiService from '../../services/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type UIType = TimelineItemType | 'collab_set';
+
 interface BookedArtist {
   id: string; // event_artist id
   artist: { id: string; name: string };
@@ -27,11 +29,16 @@ interface Props {
 
 interface AddFormState {
   afterPosition: number;
-  type: TimelineItemType;
+  type: UIType;
   title: string;
   eventArtistId: string;
   startTime: string;
   durationMinutes: string;
+  collaboratorIds: string[];
+}
+
+interface CollabData {
+  collaborators: { id: string; name: string }[];
 }
 
 interface DerivedItem {
@@ -99,17 +106,29 @@ function totalRuntime(items: TimelineItem[]): number {
   return items.reduce((sum, i) => sum + (i.durationMinutes ?? 0), 0);
 }
 
+// ─── Collab helper ────────────────────────────────────────────────────────────
+
+function parseCollabNotes(notes?: string): CollabData | null {
+  if (!notes) return null;
+  try {
+    const p = JSON.parse(notes);
+    if (p._collab === true && Array.isArray(p.collaborators)) return p as CollabData;
+  } catch {}
+  return null;
+}
+
 // ─── Type metadata ────────────────────────────────────────────────────────────
 
-const TYPE_META: Record<TimelineItemType, { label: string; bg: string; color: string }> = {
+const TYPE_META: Record<UIType, { label: string; bg: string; color: string }> = {
   artist_set: { label: 'Artist',  bg: 'var(--accent-soft)', color: 'var(--accent)' },
   dj_set:     { label: 'DJ Set',  bg: 'oklch(0.93 0.04 280)', color: 'oklch(0.55 0.16 280)' },
   break:      { label: 'Break',   bg: 'var(--bg-2)', color: 'var(--ink-3)' },
   talk:       { label: 'Talk',    bg: 'oklch(0.93 0.04 220)', color: 'oklch(0.52 0.12 220)' },
   custom:     { label: 'Custom',  bg: 'var(--bg-2)', color: 'var(--ink-2)' },
+  collab_set: { label: 'Collab',  bg: 'oklch(0.93 0.05 45)',  color: 'oklch(0.58 0.2 45)' },
 };
 
-const ALL_TYPES: TimelineItemType[] = ['break', 'custom'];
+const ALL_TYPES: UIType[] = ['break', 'custom', 'collab_set'];
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -179,7 +198,9 @@ function SortableItem({ derived, isDropTarget, onDelete, onBlurTime, onBlurDurat
     transition,
   };
 
-  const meta = TYPE_META[item.type];
+  const collab = parseCollabNotes(item.notes);
+  const displayType: UIType = collab ? 'collab_set' : item.type;
+  const meta = TYPE_META[displayType];
 
   return (
     <>
@@ -195,7 +216,7 @@ function SortableItem({ derived, isDropTarget, onDelete, onBlurTime, onBlurDurat
           {meta.label}
         </span>
 
-        {item.type === 'artist_set' && (
+        {displayType === 'artist_set' && (
           item.artistImageUrl
             ? <img className="a-tl-photo" src={item.artistImageUrl} alt="" />
             : <div className="a-tl-photo-placeholder" />
@@ -260,9 +281,16 @@ interface AddFormProps {
   onSubmit: () => void;
   onCancel: () => void;
   saving: boolean;
+  eventArtists: BookedArtist[];
 }
 
-function AddForm({ form, onChange, onSubmit, onCancel, saving }: AddFormProps) {
+function AddForm({ form, onChange, onSubmit, onCancel, saving, eventArtists }: AddFormProps) {
+  const isCollabReady = form.type === 'collab_set' && form.collaboratorIds.length >= 2;
+  const isSubmitDisabled = saving || (
+    form.type === 'artist_set'  ? !form.eventArtistId :
+    form.type === 'collab_set'  ? !isCollabReady :
+    !form.title.trim()
+  );
 
   return (
     <div className="a-tl-add-form">
@@ -275,7 +303,7 @@ function AddForm({ form, onChange, onSubmit, onCancel, saving }: AddFormProps) {
               type="button"
               className={`a-tl-type-btn${form.type === t ? ' is-on' : ''}`}
               style={form.type === t ? { background: meta.bg, color: meta.color, borderColor: 'transparent' } : undefined}
-              onClick={() => onChange({ type: t, eventArtistId: '' })}
+              onClick={() => onChange({ type: t, eventArtistId: '', collaboratorIds: [], title: '' })}
             >
               {meta.label}
             </button>
@@ -283,15 +311,52 @@ function AddForm({ form, onChange, onSubmit, onCancel, saving }: AddFormProps) {
         })}
       </div>
 
+      {form.type === 'collab_set' ? (
+        <div className="a-tl-collab-section">
+          <div className="a-tl-collab-hint">
+            Select 2+ artists performing together
+          </div>
+          <div className="a-tl-collab-select">
+            {eventArtists.map(ea => {
+              const checked = form.collaboratorIds.includes(ea.id);
+              return (
+                <label key={ea.id} className="a-tl-collab-option">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={e => {
+                      const next = e.target.checked
+                        ? [...form.collaboratorIds, ea.id]
+                        : form.collaboratorIds.filter(id => id !== ea.id);
+                      const names = eventArtists
+                        .filter(a => next.includes(a.id))
+                        .map(a => a.artist.name);
+                      onChange({ collaboratorIds: next, title: names.join(' & ') });
+                    }}
+                  />
+                  {ea.artist.name}
+                </label>
+              );
+            })}
+          </div>
+          {form.title && (
+            <div className="a-tl-collab-preview">{form.title}</div>
+          )}
+        </div>
+      ) : (
+        <div className="a-tl-add-form-row">
+          <input
+            type="text"
+            placeholder="Slot title…"
+            value={form.title}
+            onChange={e => onChange({ title: e.target.value })}
+            style={{ flex: 1 }}
+            autoFocus
+          />
+        </div>
+      )}
+
       <div className="a-tl-add-form-row">
-        <input
-          type="text"
-          placeholder="Slot title…"
-          value={form.title}
-          onChange={e => onChange({ title: e.target.value })}
-          style={{ flex: 1 }}
-          autoFocus
-        />
         <div className="a-tl-time-field">
           <span className="a-tl-field-lbl">Start</span>
           <input
@@ -324,7 +389,7 @@ function AddForm({ form, onChange, onSubmit, onCancel, saving }: AddFormProps) {
           type="button"
           className="a-btn a-btn-primary a-btn-sm"
           onClick={onSubmit}
-          disabled={saving || (form.type === 'artist_set' ? !form.eventArtistId : !form.title.trim())}
+          disabled={isSubmitDisabled}
         >
           {saving ? 'Adding…' : 'Add slot'}
         </button>
@@ -350,7 +415,13 @@ export default function TimelineEditor({ eventId, eventArtists, initialTimeline 
   const runtime = totalRuntime(items);
 
   const placedArtistIds = new Set(items.filter(i => i.eventArtistId).map(i => i.eventArtistId!));
-  const unplacedArtists = eventArtists.filter(ea => !placedArtistIds.has(ea.id));
+  const placedCollabIds = new Set(
+    items.flatMap(i => {
+      const c = parseCollabNotes(i.notes);
+      return c ? c.collaborators.map(col => col.id) : [];
+    })
+  );
+  const unplacedArtists = eventArtists.filter(ea => !placedArtistIds.has(ea.id) && !placedCollabIds.has(ea.id));
 
   // ── Drag start ─────────────────────────────────────────────────────────────
 
@@ -479,6 +550,7 @@ export default function TimelineEditor({ eventId, eventArtists, initialTimeline 
       eventArtistId: '',
       startTime: autoStartTime,
       durationMinutes: '',
+      collaboratorIds: [],
     });
   }
 
@@ -486,13 +558,24 @@ export default function TimelineEditor({ eventId, eventArtists, initialTimeline 
     if (!addForm) return;
     setSaving(true);
 
+    const apiType: TimelineItemType = addForm.type === 'collab_set' ? 'custom' : addForm.type;
+
     const payload: Parameters<typeof apiService.addTimelineItem>[1] = {
-      type: addForm.type,
+      type: apiType,
       startTime: addForm.startTime || undefined,
       durationMinutes: addForm.durationMinutes ? parseInt(addForm.durationMinutes, 10) : undefined,
     };
 
-    payload.title = addForm.title.trim();
+    if (addForm.type === 'collab_set') {
+      const selected = eventArtists.filter(ea => addForm.collaboratorIds.includes(ea.id));
+      payload.title = selected.map(ea => ea.artist.name).join(' & ');
+      payload.notes = JSON.stringify({
+        _collab: true,
+        collaborators: selected.map(ea => ({ id: ea.id, name: ea.artist.name })),
+      });
+    } else {
+      payload.title = addForm.title.trim();
+    }
 
     const { data: newItem, error } = await apiService.addTimelineItem(eventId, payload);
     if (error || !newItem) { setSaving(false); return; }
@@ -555,6 +638,7 @@ export default function TimelineEditor({ eventId, eventArtists, initialTimeline 
                   onSubmit={submitAdd}
                   onCancel={() => setAddForm(null)}
                   saving={saving}
+                  eventArtists={eventArtists}
                 />
               : <div className="a-tl-add-row">
                   <button className="a-tl-add-btn" type="button" onClick={() => openAddForm(0)}>+</button>
@@ -580,6 +664,7 @@ export default function TimelineEditor({ eventId, eventArtists, initialTimeline 
                         onSubmit={submitAdd}
                         onCancel={() => setAddForm(null)}
                         saving={saving}
+                        eventArtists={eventArtists}
                       />
                     : <div className="a-tl-add-row">
                         <button

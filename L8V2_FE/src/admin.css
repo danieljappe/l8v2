@@ -2023,6 +2023,25 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
+/* Publish toggle */
+.admin-root .a-publish-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  border: 1.5px solid var(--line); background: var(--bg-2); color: var(--ink-2);
+  cursor: pointer; transition: all 0.15s;
+}
+.admin-root .a-publish-toggle:hover { border-color: var(--ink-3); color: var(--ink); }
+.admin-root .a-publish-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3);
+  transition: background 0.15s; flex-shrink: 0;
+}
+.admin-root .a-publish-toggle.is-published {
+  border-color: oklch(0.55 0.16 145 / 0.6);
+  background: oklch(0.55 0.16 145 / 0.08);
+  color: oklch(0.52 0.14 145);
+}
+.admin-root .a-publish-toggle.is-published .a-publish-dot { background: oklch(0.55 0.16 145); }
+
 /* message cards view */
 .admin-root .a-msg-cards { display: flex; flex-direction: column; gap: 8px; }
 
@@ -3543,6 +3562,15 @@
   color: var(--ink-3);
   margin-top: 4px;
 }
+.admin-root .a-field-hint {
+  font-size: 11.5px; margin-top: 5px;
+  padding: 5px 9px; border-radius: 5px;
+}
+.admin-root .a-field-hint-info {
+  background: oklch(0.6 0.12 220 / 0.1);
+  border: 1px solid oklch(0.6 0.12 220 / 0.25);
+  color: oklch(0.55 0.1 220);
+}
 
 /* ── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 1100px) {
@@ -3792,4 +3820,25 @@
 }
 .admin-root .a-tl-empty {
   padding: 24px 0; text-align: center; font-size: 13px; color: var(--ink-3);
+}
+
+/* Collab slot multi-select */
+.admin-root .a-tl-collab-section { display: flex; flex-direction: column; gap: 8px; }
+.admin-root .a-tl-collab-hint { font-size: 11px; color: var(--ink-3); }
+.admin-root .a-tl-collab-select { display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-root .a-tl-collab-option {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  background: var(--bg-2); border: 1px solid var(--line); cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.admin-root .a-tl-collab-option:has(input:checked) {
+  background: oklch(0.93 0.05 45 / 0.3); border-color: oklch(0.58 0.2 45);
+  color: oklch(0.45 0.18 45);
+}
+.admin-root .a-tl-collab-option input { accent-color: oklch(0.58 0.2 45); }
+.admin-root .a-tl-collab-preview {
+  font-size: 12px; font-weight: 600; color: oklch(0.58 0.2 45);
+  padding: 4px 8px; background: oklch(0.93 0.05 45 / 0.2); border-radius: 4px;
+  align-self: flex-start;
 }

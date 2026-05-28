@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Event, Artist, Venue } from '../../types/admin';
 import EventForm, { emptyEventDraft } from './EventForm';
 import apiService from '../../services/api';
+import { slugify } from '../../utils/slugUtils';
 
 interface EventsListProps {
   events: Event[];
@@ -319,6 +320,9 @@ export default function EventsList({
                         </div>
                       </td>
                       <td className="a-actions" onClick={e => e.stopPropagation()}>
+                        <a className="a-btn a-btn-ghost a-btn-icon" title="Preview public page" href={`/events/${slugify(ev.title)}`} target="_blank" rel="noopener noreferrer">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        </a>
                         <button className="a-btn a-btn-ghost a-btn-icon" title="Edit" onClick={() => handleEdit(ev)}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
                         </button>
@@ -374,6 +378,9 @@ export default function EventsList({
                       </div>
                     </div>
                     <div className="a-row-actions" onClick={e => e.stopPropagation()}>
+                      <a className="a-btn a-btn-ghost a-btn-icon a-btn-sm" title="Preview public page" href={`/events/${slugify(ev.title)}`} target="_blank" rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      </a>
                       <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm" onClick={() => handleEdit(ev)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
                       </button>
@@ -410,6 +417,9 @@ export default function EventsList({
                     <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{ev.time || '—'}</span>
                     <span className={`a-pill a-pill-${ev.status}`}>{ev.status}</span>
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 3 }}>
+                      <a className="a-btn a-btn-ghost a-btn-icon a-btn-sm" title="Preview public page" href={`/events/${slugify(ev.title)}`} target="_blank" rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      </a>
                       <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm" onClick={() => handleEdit(ev)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
                       </button>
@@ -454,6 +464,9 @@ export default function EventsList({
                         </div>
                         <div className="a-tl-side" onClick={e => e.stopPropagation()}>
                           <span className={`a-pill a-pill-${ev.status}`}>{ev.status}</span>
+                          <a className="a-btn a-btn-ghost a-btn-icon a-btn-sm" title="Preview public page" href={`/events/${slugify(ev.title)}`} target="_blank" rel="noopener noreferrer">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                          </a>
                           <button className="a-btn a-btn-ghost a-btn-icon a-btn-sm" onClick={() => handleEdit(ev)}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.12 2.12 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
                           </button>

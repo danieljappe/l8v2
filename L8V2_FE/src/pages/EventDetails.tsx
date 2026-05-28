@@ -66,7 +66,17 @@ const TYPE_META: Record<string, { label: string; bg: string; color: string }> = 
   break:      { label: 'Pause',   bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.38)'   },
   talk:       { label: 'Talk',    bg: 'rgba(20,200,180,0.12)',  color: '#14c8b4'                  },
   custom:     { label: 'Andet',   bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.38)'   },
+  collab_set: { label: 'Collab',  bg: 'rgba(255,140,0,0.14)',   color: '#ff8c00'                  },
 };
+
+function parseCollabNotes(notes?: string): { collaborators: { id: string; name: string }[] } | null {
+  if (!notes) return null;
+  try {
+    const p = JSON.parse(notes);
+    if (p._collab === true && Array.isArray(p.collaborators)) return p;
+  } catch {}
+  return null;
+}
 
 // ─── FadeUp helper ────────────────────────────────────────────────────────────
 
@@ -194,6 +204,7 @@ const EventDetails: React.FC = () => {
   // Parallax
   const { scrollYProgress: heroScroll } = useScroll({
     target: heroRef,
+    layoutEffect: false,
     offset: ['start start', 'end start'],
   });
   const heroBgY      = useTransform(heroScroll, [0, 1], ['0%', '22%']);
@@ -239,7 +250,7 @@ const EventDetails: React.FC = () => {
   // ── Derived data ─────────────────────────────────────────────────────────
 
   const isUpcoming = new Date(event.date) >= new Date();
-  const billettoLink = event.billettoURL || 'https://billetto.dk';
+  const billettoLink = event.billettoURL || null;
   const heroImage = event.imageUrl
     ? constructFullUrl(event.imageUrl)
     : event.venue?.imageUrl
@@ -365,7 +376,7 @@ const EventDetails: React.FC = () => {
             transition={{ delay: 0.78, duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
             className="flex flex-wrap items-center gap-4"
           >
-            {isUpcoming && (
+            {isUpcoming && billettoLink && (
               <motion.a
                 href={billettoLink}
                 target="_blank"
@@ -438,8 +449,10 @@ const EventDetails: React.FC = () => {
                     <div className="space-y-0">
                       {timeline.map((item, idx) => {
                         const time = effectiveTimes[idx];
-                        const meta = TYPE_META[item.type] ?? TYPE_META.custom;
-                        const isArtistSlot = item.type === 'artist_set' || item.type === 'dj_set';
+                        const collab = parseCollabNotes(item.notes);
+                        const displayType = collab ? 'collab_set' : item.type;
+                        const meta = TYPE_META[displayType] ?? TYPE_META.custom;
+                        const isArtistSlot = displayType === 'artist_set' || displayType === 'dj_set' || displayType === 'collab_set';
 
                         return (
                           <motion.div
@@ -659,12 +672,24 @@ const EventDetails: React.FC = () => {
           {/* ── Right: sticky ticket widget (desktop only) ────────────────── */}
           <div className="hidden lg:block">
             <div className="sticky top-28 space-y-4">
-              <TicketWidget
-                billettoLink={billettoLink}
-                billettoData={event.billettoData}
-                isUpcoming={isUpcoming}
-                title={event.title}
-              />
+              {billettoLink ? (
+                <TicketWidget
+                  billettoLink={billettoLink}
+                  billettoData={event.billettoData}
+                  isUpcoming={isUpcoming}
+                  title={event.title}
+                />
+              ) : (
+                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl overflow-hidden">
+                  <div className="h-[1.5px] w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                  <div className="p-6 text-center space-y-2">
+                    <SectionLabel>Entré</SectionLabel>
+                    <p className="text-white font-semibold text-base leading-snug">{event.title}</p>
+                    <p className="text-green-400 font-bold text-lg pt-1">Gratis entré</p>
+                    <p className="text-white/30 text-xs">Ingen billet nødvendig</p>
+                  </div>
+                </div>
+              )}
 
               {/* Quick info recap */}
               <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 space-y-3.5">
@@ -701,7 +726,7 @@ const EventDetails: React.FC = () => {
       </div>
 
       {/* ── Mobile sticky bottom CTA ──────────────────────────────────────── */}
-      {isUpcoming && (
+      {isUpcoming && billettoLink && (
         <motion.div
           initial={{ y: 80 }}
           animate={{ y: 0 }}

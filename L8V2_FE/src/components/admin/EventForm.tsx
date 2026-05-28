@@ -5,14 +5,15 @@ import TimelineEditor from './TimelineEditor';
 interface EventDraft {
   title: string; description: string; date: string; time: string; endTime: string;
   venue: string; artists: string[]; price: number; capacity: number;
-  image: string; billettoURL: string; status: Event['status'];
+  image: string; billettoURL: string; status: Event['status']; isActive: boolean;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const emptyEventDraft: EventDraft = {
   title: '', description: '', date: '', time: '20:00', endTime: '',
   venue: '', artists: [], price: 0, capacity: 0,
-  image: '', billettoURL: import.meta.env.DEV ? 'https://billetto.dk/e/test-event-123456' : '', status: 'upcoming',
+  image: '', billettoURL: import.meta.env.DEV ? 'https://billetto.dk/e/test-event-123456' : '',
+  status: 'upcoming', isActive: false,
 };
 
 interface EventFormProps {
@@ -182,6 +183,7 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
         image: event.image,
         billettoURL: event.billettoURL || '',
         status: event.status,
+        isActive: event.isActive ?? true,
       });
     }
   }, [event]);
@@ -210,6 +212,7 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
       venue: form.venue,
       imageUrl: form.image,
       billettoURL: form.billettoURL,
+      isActive: form.isActive,
     });
   }
 
@@ -341,6 +344,19 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
                 </div>
               </div>
 
+              {/* Publish toggle */}
+              <div className="a-field">
+                <label>Visibility</label>
+                <button
+                  type="button"
+                  className={`a-publish-toggle${form.isActive ? ' is-published' : ''}`}
+                  onClick={() => set('isActive', !form.isActive)}
+                >
+                  <span className="a-publish-dot" />
+                  {form.isActive ? 'Published' : 'Draft — hidden from site'}
+                </button>
+              </div>
+
               {/* Description */}
               <div className="a-field full">
                 <label>Description</label>
@@ -387,6 +403,11 @@ export default function EventForm({ event, onSubmit, onCancel, artists, venues, 
                   value={form.billettoURL}
                   onChange={e => set('billettoURL', e.target.value)}
                 />
+                {!form.billettoURL.trim() && (
+                  <div className="a-field-hint a-field-hint-info">
+                    No Billetto URL — the public page will show free entry instead of a ticket button.
+                  </div>
+                )}
               </div>
             </div>
           </form>
