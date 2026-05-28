@@ -113,7 +113,7 @@ function parseCollabNotes(notes?: string): CollabData | null {
   try {
     const p = JSON.parse(notes);
     if (p._collab === true && Array.isArray(p.collaborators)) return p as CollabData;
-  } catch {}
+  } catch { /* invalid JSON — not a collab slot */ }
   return null;
 }
 

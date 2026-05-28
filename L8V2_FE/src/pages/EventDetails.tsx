@@ -74,7 +74,7 @@ function parseCollabNotes(notes?: string): { collaborators: { id: string; name: 
   try {
     const p = JSON.parse(notes);
     if (p._collab === true && Array.isArray(p.collaborators)) return p;
-  } catch {}
+  } catch { /* invalid JSON — not a collab slot */ }
   return null;
 }
 
