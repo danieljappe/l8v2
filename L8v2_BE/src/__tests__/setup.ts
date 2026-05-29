@@ -95,7 +95,6 @@ beforeAll(async () => {
 afterAll(async () => {
   const { AppDataSource } = await import('../config/database');
   if (AppDataSource.isInitialized) {
-    await AppDataSource.dropDatabase();
     await AppDataSource.destroy();
   }
 });

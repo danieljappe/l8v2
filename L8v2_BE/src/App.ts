@@ -73,7 +73,7 @@ export function createApp(): Express {
   app.use(requestLogger);
 
   // Rate limiting configuration
-  const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+  const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
 
   const rateLimitConfig = {
     windowMs: 15 * 60 * 1000, // 15 minutes

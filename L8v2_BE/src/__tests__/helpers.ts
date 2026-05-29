@@ -38,8 +38,10 @@ export async function getAuthToken(
 }
 
 export async function cleanupDatabase(): Promise<void> {
-  const entities = AppDataSource.entityMetadatas;
-  for (const entity of entities) {
-    await AppDataSource.query(`TRUNCATE TABLE "${entity.tableName}" CASCADE`);
+  const tableList = AppDataSource.entityMetadatas
+    .map(e => `"${e.tableName}"`)
+    .join(', ');
+  if (tableList) {
+    await AppDataSource.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
   }
 }
