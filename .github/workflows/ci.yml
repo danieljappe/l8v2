@@ -1,15 +1,25 @@
 # .github/workflows/ci.yml
 #
-# CI/CD pipeline for L8v2 monorepo.
+# CI/CD pipeline for L8v2 monorepo (Testing Trophy order).
 # Repo layout:
 #   L8v2_BE/   – Node 18 / Express / TypeScript / TypeORM / PostgreSQL
 #   L8V2_FE/   – React 18 / Vite 5 / TypeScript / Tailwind
 #
 # Job graph:
-#   lint ──┐
-#           ├──> sonar (SonarCloud analysis, with coverage artifact)
-#           ├──> build ──> deploy (pm2 on VPS, main only, manual approval)
-#   test ──┘
+#
+#   lint ──────────────────────────────────────────────────────────┐
+#                                                                  ├──> sonar ──┐
+#   unit-test ──> integration-test (+ coverage) ──> build ──> e2e ┘            ├──> deploy
+#                                                                               │   (main only,
+#                                                                               │    manual approval)
+#                                                       build ─────────────────┘
+#
+# Trophy layer → job mapping:
+#   Static analysis  →  lint
+#   Unit tests       →  unit-test          (no Postgres, fastest gate)
+#   Integration      →  integration-test   (Postgres service, lcov for Sonar)
+#   Build            →  build              (tsc + Vite, gated on lint + integration)
+#   E2E              →  e2e                (Playwright + fresh Postgres, gated on build)
 
 name: CI
 
@@ -35,7 +45,8 @@ jobs:
 
   # =========================================================================
   # JOB 1: lint
-  # Runs ESLint on both frontend and backend.
+  # ESLint on both FE and BE. Runs in parallel with unit-test so fast static
+  # checks don't delay the test chain.
   # =========================================================================
   lint:
     name: Lint
@@ -68,21 +79,48 @@ jobs:
         run: npm run lint
 
   # =========================================================================
-  # JOB 2: test
-  # Runs backend unit + integration tests with coverage against a live
-  # PostgreSQL instance, then uploads the lcov report as an artifact for
-  # the SonarCloud job to consume.
+  # JOB 2: unit-test
+  # Pure-function unit tests — no database, no I/O.
+  # Fail-fast gate: if unit tests fail, integration tests never spin up
+  # a Postgres service, saving CI time and cost.
+  # =========================================================================
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: L8v2_BE/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: L8v2_BE
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: L8v2_BE
+        run: npm run test:unit
+
+  # =========================================================================
+  # JOB 3: integration-test
+  # Backend route-level integration tests against a live PostgreSQL service.
+  # Also generates the lcov coverage report consumed by SonarCloud.
+  #
+  # Runs after unit-test to enforce Trophy ordering and avoid wasting a DB
+  # spin-up when unit tests are already red.
   #
   # Notes:
   #   - setup.ts calls AppDataSource.synchronize(true) — schema is
-  #     self-managed, no migration:run step needed before tests.
-  #   - Local .env.test uses DB_PORT=5433 (Docker offset); CI service
-  #     container runs on 5432. Job-level env vars override cleanly since
-  #     dotenv does nothing when .env.test is absent in CI.
+  #     self-managed; no migration:run step is needed before tests.
+  #   - DB_PORT=5432 overrides the local .env.test default of 5433.
   # =========================================================================
-  test:
-    name: Test (Backend)
+  integration-test:
+    name: Integration Tests
     runs-on: ubuntu-latest
+    needs: [unit-test]
 
     services:
       postgres:
@@ -132,47 +170,14 @@ jobs:
           retention-days: 7
 
   # =========================================================================
-  # JOB 3: sonar
-  # Runs SonarCloud static analysis after lint + test pass.
-  # Downloads the coverage artifact produced by the test job so that
-  # SonarCloud can track coverage metrics over time.
-  #
-  # Requires:
-  #   SONAR_TOKEN — repo secret (Settings → Secrets → Actions)
-  #   sonar-project.properties — at the repo root (already committed)
-  # To get a token: sonarcloud.io → My Account → Security → Generate Token
-  # =========================================================================
-  sonar:
-    name: SonarCloud Analysis
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history required for blame data and new-code detection
-
-      - name: Download coverage report
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-coverage
-          path: L8v2_BE/coverage
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  # =========================================================================
   # JOB 4: build
-  # Runs after both lint and test pass.
-  # Compiles backend (tsc) and builds both frontend platforms (Vite).
+  # Compiles the backend (tsc) and bundles both FE platforms (Vite).
+  # Gated on lint + integration-test so we only build clean, tested code.
   # =========================================================================
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [lint, integration-test]
 
     steps:
       - uses: actions/checkout@v4
@@ -210,19 +215,136 @@ jobs:
         run: npm run build:booking
 
   # =========================================================================
-  # JOB 5: deploy
-  # Fires only on push to main. Requires manual approval via the
-  # "production" GitHub Environment (Settings → Environments → production).
+  # JOB 5: e2e
+  # Playwright end-to-end tests against a full running stack.
+  # Runs after build confirms the code compiles cleanly.
+  #
+  # A dedicated Postgres instance is spun up for the BE dev server.
+  # TypeORM synchronize:true (NODE_ENV=development) auto-creates the schema
+  # when the BE starts — no seed script required.
+  #
+  # Playwright webServer (in playwright.config.ts) starts both servers and
+  # waits for them to be ready before executing any spec.
+  #
+  # Tests that require pre-seeded admin credentials use test.skip() when
+  # E2E_ADMIN_PASSWORD is not set — they are skipped gracefully in CI unless
+  # the secret is configured in repository settings.
+  # =========================================================================
+  e2e:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: l8v2_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: development
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: l8v2_e2e
+      # Use a stable CI-only secret; production uses the real JWT_SECRET
+      JWT_SECRET: ci-e2e-jwt-secret
+      # Optional: set these repository secrets to run the authenticated login flow
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            L8v2_BE/package-lock.json
+            L8V2_FE/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: L8v2_BE
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: L8V2_FE
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: L8V2_FE
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E tests
+        working-directory: L8V2_FE
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: L8V2_FE/playwright-report/
+          retention-days: 7
+
+  # =========================================================================
+  # JOB 6: sonar
+  # SonarCloud static analysis. Downloads the lcov artifact from
+  # integration-test. Does not need to wait for E2E — Playwright does not
+  # contribute backend coverage to the report.
+  #
+  # Requires:
+  #   SONAR_TOKEN — repo secret (Settings → Secrets → Actions)
+  #   sonar-project.properties — at the repo root (already committed)
+  # =========================================================================
+  sonar:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: [lint, integration-test]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history required for blame data and new-code detection
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: L8v2_BE/coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # =========================================================================
+  # JOB 7: deploy
+  # Fires only on push to main after build AND e2e both pass.
+  # Requires manual approval via the "production" GitHub Environment
+  # (Settings → Environments → production).
   #
   # Required secrets (add to the production environment):
   #   VPS_HOST     – IP or hostname of your VPS
-  #   VPS_USER     – SSH username (e.g. danieljappe)
+  #   VPS_USER     – SSH username
   #   VPS_SSH_KEY  – private SSH key with access to the VPS
   # =========================================================================
   deploy:
     name: Deploy (pm2 on VPS)
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build, e2e]
     environment: production
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 

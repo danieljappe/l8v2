@@ -1,6 +1,5 @@
 import { Router, RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
-import { MoreThanOrEqual } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { ContactMessage } from '../models/ContactMessage';
 import { authenticateJWT } from '../middleware/authMiddleware';
@@ -10,7 +9,7 @@ const contactMessageRepository = AppDataSource.getRepository(ContactMessage);
 
 // Stricter rate limiting specifically for contact form submissions
 // Limits: 3 submissions per 15 minutes per IP (much stricter than general rate limit)
-const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
 const contactFormLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isDevelopment ? 10 : 3, // 10 in dev, 3 in production per 15 minutes
@@ -21,6 +20,8 @@ const contactFormLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
+    // Always skip in test environment (avoids in-memory store accumulation across test cases)
+    if (process.env.NODE_ENV === 'test') return true;
     // Skip for localhost in development
     if (isDevelopment) {
       const ip = req.ip || req.socket.remoteAddress || '';
@@ -195,32 +196,28 @@ const createContactMessage: RequestHandler = async (req, res) => {
     }
 
     // Check for duplicate submissions (same email + same message) within last hour
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const duplicateCheck = await contactMessageRepository.findOne({
-      where: {
-        email: trimmedEmail,
-        message: trimmedMessage,
-        createdAt: MoreThanOrEqual(oneHourAgo)
-      }
-    });
+    // Raw SQL avoids TypeORM's local-timezone serialization bug with timestamp without time zone columns
+    const [duplicateCheck] = await contactMessageRepository.query(
+      `SELECT id FROM "contact_message" WHERE email = $1 AND message = $2 AND "createdAt" >= NOW() - INTERVAL '1 hour' LIMIT 1`,
+      [trimmedEmail, trimmedMessage]
+    );
 
     if (duplicateCheck) {
-      return res.status(429).json({ 
-        message: 'Duplicate message detected. Please wait before submitting the same message again.' 
+      return res.status(429).json({
+        message: 'Duplicate message detected. Please wait before submitting the same message again.'
       });
     }
 
     // Check for too many messages from same email in last hour (max 5)
-    const recentMessagesCount = await contactMessageRepository.count({
-      where: {
-        email: trimmedEmail,
-        createdAt: MoreThanOrEqual(oneHourAgo)
-      }
-    });
+    const [{ count: rawCount }] = await contactMessageRepository.query(
+      `SELECT COUNT(*) as count FROM "contact_message" WHERE email = $1 AND "createdAt" >= NOW() - INTERVAL '1 hour'`,
+      [trimmedEmail]
+    );
+    const recentMessagesCount = parseInt(rawCount, 10);
 
     if (recentMessagesCount >= 5) {
-      return res.status(429).json({ 
-        message: 'Too many messages from this email address. Please wait before submitting again.' 
+      return res.status(429).json({
+        message: 'Too many messages from this email address. Please wait before submitting again.'
       });
     }
 
