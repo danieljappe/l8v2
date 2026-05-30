@@ -4,4 +4,5 @@ export * from './EventService';
 export * from './VenueService';
 export * from './EventArtistService';
 export * from './GalleryImageService';
-export * from './ContactMessageService'; 
+export * from './ContactMessageService';
+export * from './StatsService'; 

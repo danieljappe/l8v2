@@ -7,4 +7,5 @@ export * from './EventArtistRepository';
 export * from './GalleryImageRepository';
 export * from './ContactMessageRepository';
 export * from './BillettoEventDataRepository';
-export * from './TimelineRepository'; 
+export * from './TimelineRepository';
+export * from './StatsRepository'; 
