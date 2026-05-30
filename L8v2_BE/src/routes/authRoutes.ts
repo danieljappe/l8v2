@@ -1,46 +1,39 @@
-import { Router } from 'express';
-import { AppDataSource } from '../config/database';
-import { User } from '../models/User';
-import bcrypt from 'bcryptjs';
+import { Router, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
+import { UserService } from '../services/UserService';
 
 const router = Router();
-const userRepo = AppDataSource.getRepository(User);
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const userService = new UserService();
 
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
-  }
+// Auth login (token valid 7d; JWT signing is an HTTP concern, kept here)
+const loginUser: RequestHandler = async (req, res) => {
   try {
-    const user = await userRepo.findOne({ where: { email } });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const user = await userService.validateUser(email, password);
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+
     const token = jwt.sign(
-      { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
-      JWT_SECRET,
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
+
     res.json({
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        imageUrl: user.imageUrl,
-        role: user.role,
-      },
+      user: { id: user.id, email: user.email, role: user.role }
     });
-  } catch {
-    res.status(500).json({ message: 'Server error' });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
   }
-});
+};
 
-export default router; 
+router.post('/login', loginUser);
+
+export default router;

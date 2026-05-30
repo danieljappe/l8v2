@@ -1,13 +1,10 @@
-import { Router, Response, RequestHandler } from 'express';
-import { AppDataSource } from '../config/database';
-import { User } from '../models/User';
-import { authenticateJWT, AuthRequest } from '../middleware/authMiddleware';
+import { Router, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import { authenticateJWT } from '../middleware/authMiddleware';
+import { UserService } from '../services/UserService';
 
 const router = Router();
-const userRepository = AppDataSource.getRepository(User);
-
+const userService = new UserService();
 
 /**
  * @swagger
@@ -91,40 +88,12 @@ const userRepository = AppDataSource.getRepository(User);
  *         description: User deleted
  *       404:
  *         description: User not found
- *
- * /api/users/login:
- *   post:
- *     summary: Login and get a JWT
- *     tags: [Users]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: JWT token
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *       401:
- *         description: Invalid credentials
  */
 
 // Get all users
 const getAllUsers: RequestHandler = async (_req, res) => {
   try {
-    const users = await userRepository.find();
+    const users = await userService.getAllUsers();
     res.json(users);
   } catch {
     res.status(500).json({ message: 'Error fetching users' });
@@ -134,7 +103,7 @@ const getAllUsers: RequestHandler = async (_req, res) => {
 // Get user by ID
 const getUserById: RequestHandler = async (req, res) => {
   try {
-    const user = await userRepository.findOne({ where: { id: req.params.id } });
+    const user = await userService.getUserById(req.params.id);
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
@@ -148,25 +117,7 @@ const getUserById: RequestHandler = async (req, res) => {
 // Create user
 const createUser: RequestHandler = async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
-
-    if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-
-    const existing = await userRepository.findOne({ where: { email } });
-    if (existing) {
-      return res.status(409).json({ message: 'User with this email already exists' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = userRepository.create({
-      firstName,
-      lastName,
-      email,
-      password: hashedPassword,
-    });
-    const result = await userRepository.save(user);
+    const result = await userService.createUser(req.body);
     res.status(201).json(result);
   } catch {
     res.status(500).json({ message: 'Error creating user' });
@@ -176,17 +127,11 @@ const createUser: RequestHandler = async (req, res) => {
 // Update user
 const updateUser: RequestHandler = async (req, res) => {
   try {
-    const user = await userRepository.findOne({ where: { id: req.params.id } });
-    if (!user) {
+    const result = await userService.updateUser(req.params.id, req.body);
+    if (!result) {
       res.status(404).json({ message: 'User not found' });
       return;
     }
-    const updates = { ...req.body };
-    if (updates.password) {
-      updates.password = await bcrypt.hash(updates.password, 10);
-    }
-    userRepository.merge(user, updates);
-    const result = await userRepository.save(user);
     res.json(result);
   } catch {
     res.status(500).json({ message: 'Error updating user' });
@@ -196,51 +141,36 @@ const updateUser: RequestHandler = async (req, res) => {
 // Delete user
 const deleteUser: RequestHandler = async (req, res) => {
   try {
-    const user = await userRepository.findOne({ where: { id: req.params.id } });
-    if (!user) {
+    const deleted = await userService.deleteUser(req.params.id);
+    if (!deleted) {
       res.status(404).json({ message: 'User not found' });
       return;
     }
-    await userRepository.remove(user);
     res.status(204).send();
   } catch {
     res.status(500).json({ message: 'Error deleting user' });
   }
 };
 
-// Login user
+// User login (token valid 24h; JWT signing is an HTTP concern, kept here)
 const loginUser: RequestHandler = async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
-  }
   try {
-    const user = await userRepository.findOne({ where: { email } });
+    const { email, password } = req.body;
+    const user = await userService.validateUser(email, password);
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
     }
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+
     const token = jwt.sign(
-      { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '1d' }
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
     );
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        imageUrl: user.imageUrl,
-        role: user.role,
-      },
-    });
+
+    res.json({ token, user: { id: user.id, email: user.email } });
   } catch {
-    res.status(500).json({ message: 'Error logging in' });
+    res.status(500).json({ message: 'Error during login' });
   }
 };
 
@@ -250,41 +180,5 @@ router.post('/', authenticateJWT, createUser);
 router.put('/:id', authenticateJWT, updateUser);
 router.delete('/:id', authenticateJWT, deleteUser);
 router.post('/login', loginUser);
-router.put('/:id/password', authenticateJWT, async (req: AuthRequest, res: Response) => {
-  const { currentPassword, newPassword } = req.body;
-  const userId = req.params.id;
 
-  if (!req.user || req.user.id !== userId) {
-    return res.status(403).json({ message: 'Not authorized to change this password' });
-  }
-
-  if (!currentPassword || !newPassword) {
-    return res.status(400).json({ message: 'Current and new password are required' });
-  }
-
-  if (newPassword.length < 8) {
-    return res.status(400).json({ message: 'New password must be at least 8 characters long' });
-  }
-
-  try {
-    const user = await userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
-    if (!isCurrentValid) {
-      return res.status(401).json({ message: 'Current password is incorrect' });
-    }
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    await userRepository.save(user);
-
-    return res.json({ message: 'Password updated successfully' });
-  } catch (err) {
-    console.error('Error updating password:', err);
-    return res.status(500).json({ message: 'Error updating password' });
-  }
-});
-
-export default router; 
+export default router;

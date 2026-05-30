@@ -31,8 +31,11 @@ export class UserService {
     return this.userRepository.update(id, userData);
   }
 
-  async deleteUser(id: string): Promise<void> {
-    return this.userRepository.delete(id);
+  async deleteUser(id: string): Promise<boolean> {
+    const user = await this.userRepository.findById(id);
+    if (!user) return false;
+    await this.userRepository.delete(id);
+    return true;
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
