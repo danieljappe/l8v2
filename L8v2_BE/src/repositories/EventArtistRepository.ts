@@ -1,10 +1,34 @@
-import { EntityManager } from 'typeorm';
+import { EntityManager, DeepPartial } from 'typeorm';
 import { EventArtist } from '../models/EventArtist';
 import { BaseRepository } from './BaseRepository';
+
+const EVENT_ARTIST_RELATIONS = ['event', 'artist'];
 
 export class EventArtistRepository extends BaseRepository<EventArtist> {
   constructor() {
     super(EventArtist);
+  }
+
+  async findAllWithRelations(): Promise<EventArtist[]> {
+    return this.repository.find({ relations: EVENT_ARTIST_RELATIONS });
+  }
+
+  async findByIdWithRelations(id: string): Promise<EventArtist | null> {
+    return this.repository.findOne({ where: { id }, relations: EVENT_ARTIST_RELATIONS });
+  }
+
+  async mergeAndSave(id: string, data: DeepPartial<EventArtist>): Promise<EventArtist | null> {
+    const eventArtist = await this.repository.findOne({ where: { id }, relations: EVENT_ARTIST_RELATIONS });
+    if (!eventArtist) return null;
+    this.repository.merge(eventArtist, data);
+    return this.repository.save(eventArtist);
+  }
+
+  async findByEventAndArtistWithRelations(eventId: string, artistId: string): Promise<EventArtist | null> {
+    return this.repository.findOne({
+      where: { event: { id: eventId }, artist: { id: artistId } },
+      relations: EVENT_ARTIST_RELATIONS
+    });
   }
 
   /**
