@@ -1,14 +1,7 @@
 import { Event } from '../models/Event';
 import { Venue } from '../models/Venue';
 import { BaseRepository } from './BaseRepository';
-import {
-  FindOptionsWhere,
-  Between,
-  LessThanOrEqual,
-  MoreThanOrEqual,
-  LessThan,
-  DeepPartial,
-} from 'typeorm';
+import { MoreThanOrEqual, LessThan, DeepPartial } from 'typeorm';
 
 // Relations hydrated for the full event response shape (used by list + by-id reads).
 const EVENT_RELATIONS = ['venue', 'eventArtists', 'eventArtists.artist', 'galleryImages', 'billettoData'];
@@ -19,8 +12,6 @@ export class EventRepository extends BaseRepository<Event> {
   constructor() {
     super(Event);
   }
-
-  // ── Relation-aware reads (preserve the route's exact loading/ordering) ──────
 
   async findAllWithRelations(): Promise<Event[]> {
     return this.repository.find({ relations: EVENT_RELATIONS });
@@ -65,37 +56,5 @@ export class EventRepository extends BaseRepository<Event> {
     await this.repository.save(event);
 
     return this.repository.findOne({ where: { id }, relations: EVENT_RELATIONS });
-  }
-
-  // ── Existing helpers (retained) ────────────────────────────────────────────
-
-  async findByDateRange(startDate: Date, endDate: Date): Promise<Event[]> {
-    return this.repository.findBy({
-      date: Between(startDate, endDate)
-    } as FindOptionsWhere<Event>);
-  }
-
-  async findUpcomingEvents(): Promise<Event[]> {
-    return this.repository.findBy({
-      date: MoreThanOrEqual(new Date())
-    } as FindOptionsWhere<Event>);
-  }
-
-  async findPastEvents(): Promise<Event[]> {
-    return this.repository.findBy({
-      date: LessThanOrEqual(new Date())
-    } as FindOptionsWhere<Event>);
-  }
-
-  async findByVenue(venueId: string): Promise<Event[]> {
-    return this.repository.findBy({
-      venue: { id: venueId }
-    } as FindOptionsWhere<Event>);
-  }
-
-  async findByArtist(artistId: string): Promise<Event[]> {
-    return this.repository.findBy({
-      artists: { id: artistId }
-    } as FindOptionsWhere<Event>);
   }
 }

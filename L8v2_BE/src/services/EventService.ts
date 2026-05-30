@@ -83,22 +83,4 @@ export class EventService {
 
     return true;
   }
-
-  // ── Existing helpers (retained for compatibility) ──────────────────────────
-
-  async findEventsByVenue(venueId: string): Promise<Event[]> {
-    return this.eventRepository.findByVenue(venueId);
-  }
-
-  async findEventsByArtist(artistId: string): Promise<Event[]> {
-    return this.eventRepository.findByArtist(artistId);
-  }
-
-  async findEventsByDateRange(startDate: Date, endDate: Date): Promise<Event[]> {
-    return this.eventRepository.findByDateRange(startDate, endDate);
-  }
-
-  async updateEventStatus(id: string, status: string): Promise<Event | null> {
-    return this.eventRepository.update(id, { status });
-  }
 }

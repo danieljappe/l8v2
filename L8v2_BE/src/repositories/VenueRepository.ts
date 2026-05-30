@@ -15,10 +15,6 @@ export class VenueRepository extends BaseRepository<Venue> {
     return this.repository.findOne({ where: { id }, relations: ['events'] });
   }
 
-  async findByName(name: string): Promise<Venue | null> {
-    return this.repository.findOneBy({ name });
-  }
-
   async mergeAndSave(id: string, data: DeepPartial<Venue>): Promise<Venue | null> {
     const venue = await this.repository.findOne({ where: { id }, relations: ['events'] });
     if (!venue) return null;

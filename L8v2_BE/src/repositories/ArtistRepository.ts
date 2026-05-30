@@ -1,6 +1,6 @@
 import { Artist } from '../models/Artist';
 import { BaseRepository } from './BaseRepository';
-import { DeepPartial, FindOptionsWhere } from 'typeorm';
+import { DeepPartial } from 'typeorm';
 
 const ARTIST_RELATIONS = ['bookingUser'];
 
@@ -37,13 +37,5 @@ export class ArtistRepository extends BaseRepository<Artist> {
     await this.repository.save(artist);
 
     return this.repository.findOne({ where: { id }, relations: ARTIST_RELATIONS });
-  }
-
-  async findByName(name: string): Promise<Artist | null> {
-    return this.repository.findOneBy({ name } as FindOptionsWhere<Artist>);
-  }
-
-  async findByGenre(genre: string): Promise<Artist[]> {
-    return this.repository.findBy({ genre } as FindOptionsWhere<Artist>);
   }
 }

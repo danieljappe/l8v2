@@ -11,10 +11,6 @@ export class UserRepository extends BaseRepository<User> {
     return this.repository.findOneBy({ email } as FindOptionsWhere<User>);
   }
 
-  async findByUsername(username: string): Promise<User | null> {
-    return this.repository.findOneBy({ username } as FindOptionsWhere<User>);
-  }
-
   /** Loads, merges the patch and saves — returns null when the user is absent. */
   async mergeAndSave(id: string, data: DeepPartial<User>): Promise<User | null> {
     const user = await this.repository.findOne({ where: { id } });

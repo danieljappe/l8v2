@@ -1,5 +1,5 @@
 import { DeepPartial } from 'typeorm';
-import { ContactMessage, MessageStatus } from '../models/ContactMessage';
+import { ContactMessage } from '../models/ContactMessage';
 import { ContactMessageRepository } from '../repositories/ContactMessageRepository';
 
 export type CreateContactMessageResult =
@@ -21,11 +21,6 @@ export class ContactMessageService {
 
   constructor() {
     this.repository = new ContactMessageRepository();
-  }
-
-  async createMessage(data: Partial<ContactMessage>): Promise<ContactMessage> {
-    const message = await this.repository.create(data);
-    return await this.repository.save(message);
   }
 
   /**
@@ -116,60 +111,4 @@ export class ContactMessageService {
     await this.repository.delete(id);
     return true;
   }
-
-  async findMessagesByEmail(email: string): Promise<ContactMessage[]> {
-    return this.repository.findByEmail(email);
-  }
-
-  async findUnreadMessages(): Promise<ContactMessage[]> {
-    return this.repository.findUnreadMessages();
-  }
-
-  async findReadMessages(): Promise<ContactMessage[]> {
-    return this.repository.findReadMessages();
-  }
-
-  async findByStatus(status: MessageStatus): Promise<ContactMessage[]> {
-    return this.repository.findByStatus(status);
-  }
-
-  async findPendingMessages(): Promise<ContactMessage[]> {
-    return this.repository.findPendingMessages();
-  }
-
-  async findRepliedMessages(): Promise<ContactMessage[]> {
-    return this.repository.findRepliedMessages();
-  }
-
-  async findMessagesByDateRange(startDate: Date, endDate: Date): Promise<ContactMessage[]> {
-    return this.repository.findMessagesByDateRange(startDate, endDate);
-  }
-
-  async markMessageAsRead(id: string): Promise<ContactMessage | null> {
-    const message = await this.findMessageById(id);
-    if (!message) {
-      return null;
-    }
-    message.isRead = true;
-    message.status = MessageStatus.READ;
-    return await this.repository.save(message);
-  }
-
-  async markMessageAsReplied(id: string): Promise<ContactMessage | null> {
-    const message = await this.findMessageById(id);
-    if (!message) {
-      return null;
-    }
-    message.status = MessageStatus.REPLIED;
-    return await this.repository.save(message);
-  }
-
-  async archiveMessage(id: string): Promise<ContactMessage | null> {
-    const message = await this.findMessageById(id);
-    if (!message) {
-      return null;
-    }
-    message.status = MessageStatus.ARCHIVED;
-    return await this.repository.save(message);
-  }
-} 
+}
