@@ -19,7 +19,7 @@ test.describe('GET /events — events listing page (EQ)', () => {
 
   test('navigates from home to /events', async ({ page }) => {
     await page.goto('/');
-    const eventsLink = page.getByRole('link', { name: /events/i }).first();
+    const eventsLink = page.locator('a[href="/events"]').first();
     await eventsLink.click();
     await expect(page).toHaveURL(/\/events/);
   });
