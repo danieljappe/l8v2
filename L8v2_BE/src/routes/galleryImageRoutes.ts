@@ -1,26 +1,14 @@
 import { Router, RequestHandler } from 'express';
-import { AppDataSource } from '../config/database';
-import { GalleryImage } from '../models/GalleryImage';
-import { Event } from '../models/Event';
 import { authenticateJWT } from '../middleware/authMiddleware';
 import { uploadSingle, handleUploadError } from '../middleware/uploadMiddleware';
+import { GalleryImageService } from '../services/GalleryImageService';
 import path from 'path';
 import fs from 'fs';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 
 const router = Router();
-const galleryImageRepository = AppDataSource.getRepository(GalleryImage);
-const eventRepository = AppDataSource.getRepository(Event);
-
-
-// Helper function to validate eventId
-const validateEventId = async (eventId?: string): Promise<boolean> => {
-  if (!eventId) return true; // eventId is optional
-  
-  const event = await eventRepository.findOne({ where: { id: eventId } });
-  return !!event;
-};
+const galleryImageService = new GalleryImageService();
 
 /**
  * @swagger
@@ -34,25 +22,9 @@ const validateEventId = async (eventId?: string): Promise<boolean> => {
  *     responses:
  *       200:
  *         description: A list of gallery images
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
  *   post:
  *     summary: Create a new gallery image
  *     tags: [Gallery]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               eventId:
- *                 type: string
- *                 description: Optional event ID to link the image to an event
  *     responses:
  *       201:
  *         description: Gallery image created
@@ -65,53 +37,9 @@ const validateEventId = async (eventId?: string): Promise<boolean> => {
  *     tags: [Gallery]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - image
- *             properties:
- *               image:
- *                 type: string
- *                 format: binary
- *                 description: Image file to upload (JPEG, PNG, WebP, max 5MB)
- *               title:
- *                 type: string
- *                 description: Title for the image
- *               description:
- *                 type: string
- *                 description: Description of the image
- *               category:
- *                 type: string
- *                 enum: [event, venue, artist, other]
- *                 default: other
- *                 description: Category of the image
- *               tags:
- *                 type: string
- *                 description: JSON array of tags
- *               uploadedBy:
- *                 type: string
- *                 description: Name of the person uploading
- *               eventId:
- *                 type: string
- *                 description: Optional event ID to link the image to an event
  *     responses:
  *       201:
  *         description: Image uploaded successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 galleryImage:
- *                   type: object
- *                 file:
- *                   type: object
  *       400:
  *         description: Bad request (invalid file, missing fields, etc.)
  *       401:
@@ -143,16 +71,6 @@ const validateEventId = async (eventId?: string): Promise<boolean> => {
  *         required: true
  *         schema:
  *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               eventId:
- *                 type: string
- *                 description: Optional event ID to link the image to an event
  *     responses:
  *       200:
  *         description: Gallery image updated
@@ -183,19 +101,9 @@ const getAllGalleryImages: RequestHandler = async (req, res) => {
   try {
     const { eventId, limit } = req.query;
     const take = limit ? parseInt(limit as string, 10) : undefined;
-
-    if (eventId && typeof eventId === 'string') {
-      const images = await galleryImageRepository.find({
-        where: { eventId },
-        order: { createdAt: 'ASC' },
-        take
-      });
-      res.json(images);
-      return;
-    }
-
-    const galleryImages = await galleryImageRepository.find();
-    res.json(galleryImages);
+    const eventFilter = typeof eventId === 'string' ? eventId : undefined;
+    const images = await galleryImageService.getAllImages(eventFilter, take);
+    res.json(images);
   } catch {
     res.status(500).json({ message: 'Error fetching gallery images' });
   }
@@ -204,9 +112,7 @@ const getAllGalleryImages: RequestHandler = async (req, res) => {
 // Get gallery image by ID
 const getGalleryImageById: RequestHandler = async (req, res) => {
   try {
-    const galleryImage = await galleryImageRepository.findOne({
-      where: { id: req.params.id }
-    });
+    const galleryImage = await galleryImageService.getImageById(req.params.id);
     if (!galleryImage) {
       res.status(404).json({ message: 'Gallery image not found' });
       return;
@@ -221,18 +127,12 @@ const getGalleryImageById: RequestHandler = async (req, res) => {
 const createGalleryImage: RequestHandler = async (req, res) => {
   try {
     const { eventId, ...imageData } = req.body;
-    
-    // Validate eventId if provided
-    if (eventId && !(await validateEventId(eventId))) {
-      return res.status(400).json({ message: 'Invalid eventId provided' });
+    const result = await galleryImageService.createImage(eventId, imageData);
+    if (result.status === 'invalid_event') {
+      res.status(400).json({ message: 'Invalid eventId provided' });
+      return;
     }
-    
-    const galleryImage = galleryImageRepository.create({
-      ...imageData,
-      eventId: eventId || null
-    });
-    const result = await galleryImageRepository.save(galleryImage);
-    res.status(201).json(result);
+    res.status(201).json(result.image);
   } catch {
     res.status(500).json({ message: 'Error creating gallery image' });
   }
@@ -242,26 +142,16 @@ const createGalleryImage: RequestHandler = async (req, res) => {
 const updateGalleryImage: RequestHandler = async (req, res) => {
   try {
     const { eventId, ...updateData } = req.body;
-    
-    // Validate eventId if provided
-    if (eventId && !(await validateEventId(eventId))) {
-      return res.status(400).json({ message: 'Invalid eventId provided' });
+    const result = await galleryImageService.updateImage(req.params.id, eventId, updateData);
+    if (result.status === 'invalid_event') {
+      res.status(400).json({ message: 'Invalid eventId provided' });
+      return;
     }
-    
-    const galleryImage = await galleryImageRepository.findOne({
-      where: { id: req.params.id }
-    });
-    if (!galleryImage) {
+    if (result.status === 'not_found') {
       res.status(404).json({ message: 'Gallery image not found' });
       return;
     }
-    
-    galleryImageRepository.merge(galleryImage, {
-      ...updateData,
-      eventId: eventId !== undefined ? eventId : galleryImage.eventId
-    });
-    const result = await galleryImageRepository.save(galleryImage);
-    res.json(result);
+    res.json(result.image);
   } catch {
     res.status(500).json({ message: 'Error updating gallery image' });
   }
@@ -270,32 +160,23 @@ const updateGalleryImage: RequestHandler = async (req, res) => {
 // Delete gallery image
 const deleteGalleryImage: RequestHandler = async (req, res) => {
   try {
-    const galleryImage = await galleryImageRepository.findOne({
-      where: { id: req.params.id }
-    });
-    if (!galleryImage) {
+    const deleted = await galleryImageService.deleteImage(req.params.id);
+    if (!deleted) {
       res.status(404).json({ message: 'Gallery image not found' });
       return;
     }
-    await galleryImageRepository.remove(galleryImage);
     res.status(204).send();
   } catch {
     res.status(500).json({ message: 'Error deleting gallery image' });
   }
 };
 
-// Upload gallery image file
+// Upload gallery image file (file handling stays here; DB write goes via service)
 const uploadGalleryImage: RequestHandler = async (req, res) => {
   try {
-    console.log('Starting file upload process...');
-    console.log('Request body:', req.body);
-    console.log('Request file:', req.file);
-    
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
-
-    console.log(`File received: ${req.file.originalname} (${req.file.size} bytes)`);
 
     // Additional file size check
     if (req.file.size > 15 * 1024 * 1024) {
@@ -309,7 +190,6 @@ const uploadGalleryImage: RequestHandler = async (req, res) => {
     }
 
     // Make title/description optional - use filename as fallback
-    const title = req.body.title || req.file.originalname;
     const description = req.body.description || req.file.originalname;
 
     // Validate category
@@ -326,33 +206,24 @@ const uploadGalleryImage: RequestHandler = async (req, res) => {
 
     // Create file path relative to uploads directory
     const filePath = `/uploads/gallery/${req.file.filename}`;
-    
-    // Validate eventId if provided
+
     const eventId = req.body.eventId;
-    if (eventId && !(await validateEventId(eventId))) {
-      return res.status(400).json({ message: 'Invalid eventId provided' });
-    }
-    
-    console.log(`Creating gallery image record with title: "${title}", description: "${description}", category: ${category}`);
-    
-    // Create gallery image record
-    const galleryImage = galleryImageRepository.create({
+    const result = await galleryImageService.createImage(eventId, {
       filename: req.file.filename,
       url: filePath,
       caption: description,
       category: category,
       photographer: req.body.uploadedBy || 'Admin',
       isPublished: true,
-      eventId: eventId || null
     });
 
-    const result = await galleryImageRepository.save(galleryImage);
-    
-    console.log(`Gallery image uploaded successfully: ${req.file.filename} by ${req.body.uploadedBy || 'Admin'}`);
-    
+    if (result.status === 'invalid_event') {
+      return res.status(400).json({ message: 'Invalid eventId provided' });
+    }
+
     res.status(201).json({
       message: 'File uploaded successfully',
-      galleryImage: result,
+      galleryImage: result.image,
       file: {
         filename: req.file.filename,
         originalname: req.file.originalname,
@@ -363,20 +234,19 @@ const uploadGalleryImage: RequestHandler = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload error:', error);
-    
+
     // If database save failed, try to clean up the uploaded file
     if (req.file) {
       try {
         const filePath = path.join(__dirname, '../../uploads/gallery', req.file.filename);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
-          console.log(`Cleaned up uploaded file after database error: ${req.file.filename}`);
         }
       } catch (cleanupError) {
         console.error('Failed to clean up uploaded file:', cleanupError);
       }
     }
-    
+
     res.status(500).json({ message: 'Error uploading file' });
   }
 };
@@ -407,16 +277,4 @@ router.post('/upload', authenticateJWT, uploadLimiter, uploadSingle, handleUploa
 router.put('/:id', authenticateJWT, updateGalleryImage);
 router.delete('/:id', authenticateJWT, deleteGalleryImage);
 
-/* 
-Request URL
-https://l8events.dk/api/gallery/upload
-Request Method
-POST
-Status Code
-404 Not Found
-Remote Address
-91.210.57.215:443
-Referrer Policy
-no-referrer-when-downgrade
- */
-export default router; 
+export default router;

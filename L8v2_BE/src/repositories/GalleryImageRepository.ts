@@ -1,6 +1,6 @@
 import { GalleryImage, GalleryCategory } from '../models/GalleryImage';
 import { BaseRepository } from './BaseRepository';
-import { Between, EntityManager } from 'typeorm';
+import { Between, EntityManager, DeepPartial } from 'typeorm';
 
 export class GalleryImageRepository extends BaseRepository<GalleryImage> {
   constructor() {
@@ -22,6 +22,22 @@ export class GalleryImageRepository extends BaseRepository<GalleryImage> {
         eventId
       }
     });
+  }
+
+  /** Images for an event ordered by createdAt ASC (used by ?eventId=&limit=). */
+  async findByEventOrdered(eventId: string, take?: number): Promise<GalleryImage[]> {
+    return this.repository.find({
+      where: { eventId },
+      order: { createdAt: 'ASC' },
+      take
+    });
+  }
+
+  async mergeAndSave(id: string, data: DeepPartial<GalleryImage>): Promise<GalleryImage | null> {
+    const image = await this.repository.findOne({ where: { id } });
+    if (!image) return null;
+    this.repository.merge(image, data);
+    return this.repository.save(image);
   }
 
   async findByPhotographer(photographer: string): Promise<GalleryImage[]> {
