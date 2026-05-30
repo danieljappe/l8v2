@@ -5,4 +5,6 @@ export * from './EventRepository';
 export * from './VenueRepository';
 export * from './EventArtistRepository';
 export * from './GalleryImageRepository';
-export * from './ContactMessageRepository'; 
+export * from './ContactMessageRepository';
+export * from './BillettoEventDataRepository';
+export * from './TimelineRepository'; 

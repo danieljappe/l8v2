@@ -127,6 +127,15 @@ describe('GET /api/events/:id', () => {
     expect(res.body.id).toBe(createdEventId);
   });
 
+  it('includes a timeline array built from the running-order view', async () => {
+    const res = await request(app).get(`/api/events/${createdEventId}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('timeline');
+    expect(Array.isArray(res.body.timeline)).toBe(true);
+    // No running-order rows seeded for this event → empty array.
+    expect(res.body.timeline).toEqual([]);
+  });
+
   it('returns 200 for an existing event (by slug)', async () => {
     // "Test Concert" slugifies to "test-concert"
     const res = await request(app).get('/api/events/test-concert');
@@ -242,5 +251,32 @@ describe('DELETE /api/events/:id', () => {
       .delete('/api/events/00000000-0000-0000-0000-000000000000')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(404);
+  });
+
+  it('cascades child deletes (timeline items) within the delete and returns 204', async () => {
+    const { token, eventId } = await seedEventWithAuth();
+
+    // Seed a child record: a timeline item belonging to the event.
+    const add = await request(app)
+      .post(`/api/timeline/${eventId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ type: 'break', title: 'Intermission' });
+    expect(add.status).toBe(201);
+
+    const before = await request(app).get(`/api/timeline/${eventId}`);
+    expect(before.body.length).toBe(1);
+
+    const del = await request(app)
+      .delete(`/api/events/${eventId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(del.status).toBe(204);
+
+    // Child timeline rows are gone …
+    const after = await request(app).get(`/api/timeline/${eventId}`);
+    expect(after.body).toEqual([]);
+
+    // … and so is the event itself.
+    const getRes = await request(app).get(`/api/events/${eventId}`);
+    expect(getRes.status).toBe(404);
   });
 });
