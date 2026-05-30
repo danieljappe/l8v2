@@ -8,4 +8,5 @@ export * from './GalleryImageRepository';
 export * from './ContactMessageRepository';
 export * from './BillettoEventDataRepository';
 export * from './TimelineRepository';
-export * from './StatsRepository'; 
+export * from './StatsRepository';
+export * from './AuditLogRepository'; 
