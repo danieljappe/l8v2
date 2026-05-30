@@ -36,7 +36,7 @@ export default defineConfig({
     },
     {
       command: 'npm run dev',
-      url: 'http://localhost:3000',
+      url: 'http://localhost:3000/api/stats',
       cwd: '../L8v2_BE',
       reuseExistingServer: true,
       timeout: 60_000,

@@ -18,7 +18,8 @@ test.describe('GET /events — events listing page (EQ)', () => {
   });
 
   test('navigates from home to /events', async ({ page }) => {
-    await page.goto('/');
+    // Navigate to /home (not /) to bypass the PlatformChoice screen shown at root
+    await page.goto('/home');
     const eventsLink = page.locator('a[href="/events"]').first();
     await eventsLink.click();
     await expect(page).toHaveURL(/\/events/);
