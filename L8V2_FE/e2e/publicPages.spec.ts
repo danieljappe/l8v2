@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+// Dismiss the cookie consent banner before every test so it doesn't obscure elements
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('cookieConsent', JSON.stringify({ necessary: true, analytics: true, marketing: true }));
+  });
+});
+
 // ─── Smoke tests: all public pages render without crashing ────────────────────
 //
 // EQ class covered: "valid route" — each page belongs to the partition of routes

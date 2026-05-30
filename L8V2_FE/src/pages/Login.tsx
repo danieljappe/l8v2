@@ -50,8 +50,9 @@ export default function Login() {
         <h2 className="text-2xl font-bold text-center text-gray-900">Admin Login</h2>
         {error && <div className="text-red-600 text-center">{error}</div>}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Email</label>
           <input
+            id="email"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
@@ -60,8 +61,9 @@ export default function Login() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Password</label>
           <input
+            id="password"
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}

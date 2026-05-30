@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
+  // Pre-set cookie consent so the banner doesn't cover the form
+  await page.addInitScript(() => {
+    localStorage.setItem('cookieConsent', JSON.stringify({ necessary: true, analytics: true, marketing: true }));
+  });
   await page.goto('/contact');
 });
 

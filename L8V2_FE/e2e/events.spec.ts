@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+// Dismiss the cookie consent banner before every test so it doesn't obscure elements
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('cookieConsent', JSON.stringify({ necessary: true, analytics: true, marketing: true }));
+  });
+});
+
 // ─── Events listing page (EQ: page renders) ───────────────────────────────────
 
 test.describe('GET /events — events listing page (EQ)', () => {

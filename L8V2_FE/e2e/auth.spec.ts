@@ -6,6 +6,13 @@ import { test, expect } from '@playwright/test';
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'admin@l8events.dk';
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? '';
 
+// Dismiss the cookie consent banner before every test so it doesn't cover form elements
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('cookieConsent', JSON.stringify({ necessary: true, analytics: true, marketing: true }));
+  });
+});
+
 // ─── PrivateRoute guard ────────────────────────────────────────────────────────
 
 test.describe('PrivateRoute guard (EQ)', () => {
