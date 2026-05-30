@@ -23,10 +23,11 @@ export default defineConfig({
     },
   ],
 
-  // In CI the job starts servers manually (build → migration:run → background node/vite).
-  // reuseExistingServer:true tells Playwright to use whatever is already listening;
-  // if nothing is listening locally, it falls back to running the command.
-  webServer: [
+  // In CI the workflow starts both servers manually before running Playwright,
+  // so webServer is not needed and must be omitted — otherwise Playwright tries
+  // to start a second instance and hits EADDRINUSE on the already-occupied port.
+  // Locally, webServer starts the servers if they are not already running.
+  webServer: isCI ? undefined : [
     {
       command: 'npm run dev',
       url: 'http://localhost:5173',
