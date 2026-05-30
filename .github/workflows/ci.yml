@@ -219,16 +219,20 @@ jobs:
   # Playwright end-to-end tests against a full running stack.
   # Runs after build confirms the code compiles cleanly.
   #
-  # A dedicated Postgres instance is spun up for the BE dev server.
-  # TypeORM synchronize:true (NODE_ENV=development) auto-creates the schema
-  # when the BE starts — no seed script required.
-  #
-  # Playwright webServer (in playwright.config.ts) starts both servers and
-  # waits for them to be ready before executing any spec.
+  # Why servers are managed here, not via Playwright webServer:
+  #   The database config uses synchronize:false (always), so tables only
+  #   exist after migrations run. Playwright's webServer would time out
+  #   before we could run migrations. Instead, we:
+  #     1. Build the BE (tsc → dist/)
+  #     2. Run migrations against l8v2_e2e
+  #     3. Start BE (compiled) + FE (vite dev) as background processes
+  #     4. Poll until both respond, then hand off to Playwright
+  #   playwright.config.ts uses reuseExistingServer:true so it picks up the
+  #   already-running servers rather than trying to start its own.
   #
   # Tests that require pre-seeded admin credentials use test.skip() when
-  # E2E_ADMIN_PASSWORD is not set — they are skipped gracefully in CI unless
-  # the secret is configured in repository settings.
+  # E2E_ADMIN_PASSWORD is not set — they skip gracefully in CI unless the
+  # secret is configured in repository settings.
   # =========================================================================
   e2e:
     name: E2E Tests (Playwright)
@@ -257,7 +261,7 @@ jobs:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: l8v2_e2e
-      # Use a stable CI-only secret; production uses the real JWT_SECRET
+      # Stable CI-only secret; production uses the real JWT_SECRET
       JWT_SECRET: ci-e2e-jwt-secret
       # Optional: set these repository secrets to run the authenticated login flow
       E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
@@ -278,9 +282,34 @@ jobs:
         working-directory: L8v2_BE
         run: npm ci
 
+      - name: Build backend
+        working-directory: L8v2_BE
+        run: npm run build
+
+      - name: Run E2E database migrations
+        working-directory: L8v2_BE
+        run: npm run migration:run
+
+      - name: Start backend server
+        working-directory: L8v2_BE
+        run: node dist/App.js &
+
       - name: Install frontend dependencies
         working-directory: L8V2_FE
         run: npm ci
+
+      - name: Start frontend dev server
+        working-directory: L8V2_FE
+        env:
+          VITE_PLATFORM: events
+        run: npx vite &
+
+      - name: Wait for servers to be ready
+        run: |
+          echo "Waiting for backend on :3000..."
+          timeout 60 bash -c 'until curl -s http://localhost:3000 -o /dev/null; do sleep 2; done'
+          echo "Waiting for frontend on :5173..."
+          timeout 60 bash -c 'until curl -s http://localhost:5173 -o /dev/null; do sleep 2; done'
 
       - name: Install Playwright browsers
         working-directory: L8V2_FE

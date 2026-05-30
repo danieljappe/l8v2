@@ -23,20 +23,22 @@ export default defineConfig({
     },
   ],
 
+  // In CI the job starts servers manually (build → migration:run → background node/vite).
+  // reuseExistingServer:true tells Playwright to use whatever is already listening;
+  // if nothing is listening locally, it falls back to running the command.
   webServer: [
     {
       command: 'npm run dev',
       url: 'http://localhost:5173',
-      // In CI always start fresh; locally reuse a running server
-      reuseExistingServer: !isCI,
-      timeout: isCI ? 60_000 : 30_000,
+      reuseExistingServer: true,
+      timeout: 60_000,
     },
     {
       command: 'npm run dev',
       url: 'http://localhost:3000',
       cwd: '../L8v2_BE',
-      reuseExistingServer: !isCI,
-      timeout: isCI ? 60_000 : 30_000,
+      reuseExistingServer: true,
+      timeout: 60_000,
     },
   ],
 });
