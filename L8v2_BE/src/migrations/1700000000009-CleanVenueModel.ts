@@ -4,13 +4,13 @@ export class CleanVenueModel1700000000009 implements MigrationInterface {
     name = 'CleanVenueModel1700000000009'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN "latitude"`);
-        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN "longitude"`);
-        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN "isActive"`);
-        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN "zipCode"`);
-        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN "country"`);
-        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN "state"`);
-        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN "capacity"`);
+        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN IF EXISTS "latitude"`);
+        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN IF EXISTS "longitude"`);
+        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN IF EXISTS "isActive"`);
+        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN IF EXISTS "zipCode"`);
+        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN IF EXISTS "country"`);
+        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN IF EXISTS "state"`);
+        await queryRunner.query(`ALTER TABLE "venue" DROP COLUMN IF EXISTS "capacity"`);
         await queryRunner.query(`ALTER TABLE "venue" ALTER COLUMN "description" DROP NOT NULL`);
     }
 
