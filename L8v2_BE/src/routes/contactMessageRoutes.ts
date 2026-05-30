@@ -1,11 +1,10 @@
 import { Router, RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
-import { AppDataSource } from '../config/database';
-import { ContactMessage } from '../models/ContactMessage';
 import { authenticateJWT } from '../middleware/authMiddleware';
+import { ContactMessageService } from '../services/ContactMessageService';
 
 const router = Router();
-const contactMessageRepository = AppDataSource.getRepository(ContactMessage);
+const contactMessageService = new ContactMessageService();
 
 // Stricter rate limiting specifically for contact form submissions
 // Limits: 3 submissions per 15 minutes per IP (much stricter than general rate limit)
@@ -127,7 +126,7 @@ const contactFormLimiter = rateLimit({
 // Get all contact messages
 const getAllContactMessages: RequestHandler = async (_req, res) => {
   try {
-    const contactMessages = await contactMessageRepository.find();
+    const contactMessages = await contactMessageService.findAllMessages();
     res.json(contactMessages);
   } catch {
     res.status(500).json({ message: 'Error fetching contact messages' });
@@ -137,9 +136,7 @@ const getAllContactMessages: RequestHandler = async (_req, res) => {
 // Get contact message by ID
 const getContactMessageById: RequestHandler = async (req, res) => {
   try {
-    const contactMessage = await contactMessageRepository.findOne({
-      where: { id: req.params.id }
-    });
+    const contactMessage = await contactMessageService.findMessageById(req.params.id);
     if (!contactMessage) {
       res.status(404).json({ message: 'Contact message not found' });
       return;
@@ -150,107 +147,26 @@ const getContactMessageById: RequestHandler = async (req, res) => {
   }
 };
 
-// Create contact message
+// Create contact message (public, validated + throttled in the service)
 const createContactMessage: RequestHandler = async (req, res) => {
   try {
-    const { name, email, message, subject } = req.body;
+    const result = await contactMessageService.createContactMessage(req.body);
 
-    // Validate required fields
-    if (!name || !email || !message) {
-      return res.status(400).json({ 
-        message: 'Name, email, and message are required fields' 
-      });
+    if (result.status === 'invalid') {
+      return res.status(400).json({ message: result.message });
     }
-
-    // Trim and validate input lengths
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedMessage = message.trim();
-    const trimmedSubject = subject?.trim() || null;
-
-    // Length validation to prevent abuse
-    if (trimmedName.length < 2 || trimmedName.length > 100) {
-      return res.status(400).json({ 
-        message: 'Name must be between 2 and 100 characters' 
-      });
-    }
-
-    if (trimmedMessage.length < 10 || trimmedMessage.length > 5000) {
-      return res.status(400).json({ 
-        message: 'Message must be between 10 and 5000 characters' 
-      });
-    }
-
-    if (trimmedSubject && trimmedSubject.length > 200) {
-      return res.status(400).json({ 
-        message: 'Subject must be less than 200 characters' 
-      });
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      return res.status(400).json({ 
-        message: 'Invalid email format' 
-      });
-    }
-
-    // Check for duplicate submissions (same email + same message) within last hour
-    // Raw SQL avoids TypeORM's local-timezone serialization bug with timestamp without time zone columns
-    const [duplicateCheck] = await contactMessageRepository.query(
-      `SELECT id FROM "contact_message" WHERE email = $1 AND message = $2 AND "createdAt" >= NOW() - INTERVAL '1 hour' LIMIT 1`,
-      [trimmedEmail, trimmedMessage]
-    );
-
-    if (duplicateCheck) {
+    if (result.status === 'duplicate') {
       return res.status(429).json({
         message: 'Duplicate message detected. Please wait before submitting the same message again.'
       });
     }
-
-    // Check for too many messages from same email in last hour (max 5)
-    const [{ count: rawCount }] = await contactMessageRepository.query(
-      `SELECT COUNT(*) as count FROM "contact_message" WHERE email = $1 AND "createdAt" >= NOW() - INTERVAL '1 hour'`,
-      [trimmedEmail]
-    );
-    const recentMessagesCount = parseInt(rawCount, 10);
-
-    if (recentMessagesCount >= 5) {
+    if (result.status === 'throttled') {
       return res.status(429).json({
         message: 'Too many messages from this email address. Please wait before submitting again.'
       });
     }
 
-    // Basic spam detection - check for common spam patterns
-    const spamPatterns = [
-      /(?:https?:\/\/)?(?:www\.)?(?:bit\.ly|tinyurl|t\.co|goo\.gl|short\.link)/i, // URL shorteners
-      /(?:buy|cheap|discount|offer|deal|sale).*(?:now|today|limited)/i, // Common spam keywords
-      /(?:click here|visit now|act now|order now)/i,
-      /(?:free money|make money|earn money|get rich)/i,
-    ];
-
-    const messageLower = trimmedMessage.toLowerCase();
-    const subjectLower = trimmedSubject?.toLowerCase() || '';
-    const combinedText = `${subjectLower} ${messageLower}`;
-
-    for (const pattern of spamPatterns) {
-      if (pattern.test(combinedText)) {
-        console.log(`⚠️ Potential spam detected from ${trimmedEmail}: ${pattern}`);
-        // Log but don't block - let admin review
-        // You can uncomment the return below to block automatically
-        // return res.status(400).json({ message: 'Message contains suspicious content' });
-      }
-    }
-
-    const contactMessage = contactMessageRepository.create({
-      name: trimmedName,
-      email: trimmedEmail,
-      message: trimmedMessage,
-      subject: trimmedSubject,
-    });
-    
-    const result = await contactMessageRepository.save(contactMessage);
-    res.status(201).json(result);
+    res.status(201).json(result.contactMessage);
   } catch (error) {
     console.error('Error creating contact message:', error);
     res.status(500).json({
@@ -263,15 +179,11 @@ const createContactMessage: RequestHandler = async (req, res) => {
 // Update contact message
 const updateContactMessage: RequestHandler = async (req, res) => {
   try {
-    const contactMessage = await contactMessageRepository.findOne({
-      where: { id: req.params.id }
-    });
-    if (!contactMessage) {
+    const result = await contactMessageService.updateMessage(req.params.id, req.body);
+    if (!result) {
       res.status(404).json({ message: 'Contact message not found' });
       return;
     }
-    contactMessageRepository.merge(contactMessage, req.body);
-    const result = await contactMessageRepository.save(contactMessage);
     res.json(result);
   } catch {
     res.status(500).json({ message: 'Error updating contact message' });
@@ -281,14 +193,11 @@ const updateContactMessage: RequestHandler = async (req, res) => {
 // Delete contact message
 const deleteContactMessage: RequestHandler = async (req, res) => {
   try {
-    const contactMessage = await contactMessageRepository.findOne({
-      where: { id: req.params.id }
-    });
-    if (!contactMessage) {
+    const deleted = await contactMessageService.deleteMessage(req.params.id);
+    if (!deleted) {
       res.status(404).json({ message: 'Contact message not found' });
       return;
     }
-    await contactMessageRepository.remove(contactMessage);
     res.status(204).send();
   } catch {
     res.status(500).json({ message: 'Error deleting contact message' });
@@ -297,8 +206,8 @@ const deleteContactMessage: RequestHandler = async (req, res) => {
 
 router.get('/', authenticateJWT, getAllContactMessages);
 router.get('/:id', authenticateJWT, getContactMessageById);
-router.post('/', contactFormLimiter, createContactMessage); // Public endpoint with rate limiting
+router.post('/', contactFormLimiter, createContactMessage);
 router.put('/:id', authenticateJWT, updateContactMessage);
 router.delete('/:id', authenticateJWT, deleteContactMessage);
 
-export default router; 
+export default router;

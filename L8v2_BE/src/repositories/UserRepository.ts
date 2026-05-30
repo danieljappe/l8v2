@@ -1,6 +1,6 @@
 import { User } from '../models/User';
 import { BaseRepository } from './BaseRepository';
-import { FindOptionsWhere } from 'typeorm';
+import { FindOptionsWhere, DeepPartial } from 'typeorm';
 
 export class UserRepository extends BaseRepository<User> {
   constructor() {
@@ -15,4 +15,11 @@ export class UserRepository extends BaseRepository<User> {
     return this.repository.findOneBy({ username } as FindOptionsWhere<User>);
   }
 
+  /** Loads, merges the patch and saves — returns null when the user is absent. */
+  async mergeAndSave(id: string, data: DeepPartial<User>): Promise<User | null> {
+    const user = await this.repository.findOne({ where: { id } });
+    if (!user) return null;
+    this.repository.merge(user, data);
+    return this.repository.save(user);
+  }
 } 

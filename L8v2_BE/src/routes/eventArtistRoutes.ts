@@ -1,10 +1,9 @@
 import { Router, RequestHandler } from 'express';
-import { AppDataSource } from '../config/database';
-import { EventArtist } from '../models/EventArtist';
 import { authenticateJWT } from '../middleware/authMiddleware';
+import { EventArtistService } from '../services/EventArtistService';
 
 const router = Router();
-const eventArtistRepository = AppDataSource.getRepository(EventArtist);
+const eventArtistService = new EventArtistService();
 
 /**
  * @swagger
@@ -93,9 +92,7 @@ const eventArtistRepository = AppDataSource.getRepository(EventArtist);
 // Get all event artists
 const getAllEventArtists: RequestHandler = async (_req, res) => {
   try {
-    const eventArtists = await eventArtistRepository.find({
-      relations: ['event', 'artist']
-    });
+    const eventArtists = await eventArtistService.getAllEventArtists();
     res.json(eventArtists);
   } catch {
     res.status(500).json({ message: 'Error fetching event artists' });
@@ -105,10 +102,7 @@ const getAllEventArtists: RequestHandler = async (_req, res) => {
 // Get event artist by ID
 const getEventArtistById: RequestHandler = async (req, res) => {
   try {
-    const eventArtist = await eventArtistRepository.findOne({
-      where: { id: req.params.id },
-      relations: ['event', 'artist']
-    });
+    const eventArtist = await eventArtistService.getEventArtistById(req.params.id);
     if (!eventArtist) {
       res.status(404).json({ message: 'Event artist not found' });
       return;
@@ -122,20 +116,15 @@ const getEventArtistById: RequestHandler = async (req, res) => {
 // Create event artist
 const createEventArtist: RequestHandler = async (req, res) => {
   try {
-    console.log('Creating event artist with data:', req.body);
-    
     // Validate required fields
     if (!req.body.event || !req.body.artist) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Missing required fields: event and artist are required',
-        received: req.body 
+        received: req.body
       });
     }
 
-    const eventArtist = eventArtistRepository.create(req.body);
-    const result = await eventArtistRepository.save(eventArtist);
-    
-    console.log('Event artist created successfully:', result);
+    const result = await eventArtistService.createEventArtist(req.body);
     res.status(201).json(result);
   } catch (err) {
     console.error('Error creating event artist:', err);
@@ -148,16 +137,11 @@ const createEventArtist: RequestHandler = async (req, res) => {
 // Update event artist
 const updateEventArtist: RequestHandler = async (req, res) => {
   try {
-    const eventArtist = await eventArtistRepository.findOne({
-      where: { id: req.params.id },
-      relations: ['event', 'artist']
-    });
-    if (!eventArtist) {
+    const result = await eventArtistService.updateEventArtist(req.params.id, req.body);
+    if (!result) {
       res.status(404).json({ message: 'Event artist not found' });
       return;
     }
-    eventArtistRepository.merge(eventArtist, req.body);
-    const result = await eventArtistRepository.save(eventArtist);
     res.json(result);
   } catch {
     res.status(500).json({ message: 'Error updating event artist' });
@@ -167,15 +151,11 @@ const updateEventArtist: RequestHandler = async (req, res) => {
 // Delete event artist
 const deleteEventArtist: RequestHandler = async (req, res) => {
   try {
-    const eventArtist = await eventArtistRepository.findOne({
-      where: { id: req.params.id },
-      relations: ['event', 'artist']
-    });
-    if (!eventArtist) {
+    const deleted = await eventArtistService.deleteEventArtist(req.params.id);
+    if (!deleted) {
       res.status(404).json({ message: 'Event artist not found' });
       return;
     }
-    await eventArtistRepository.remove(eventArtist);
     res.status(204).send();
   } catch {
     res.status(500).json({ message: 'Error deleting event artist' });
@@ -186,34 +166,17 @@ const deleteEventArtist: RequestHandler = async (req, res) => {
 const removeArtistFromEvent: RequestHandler = async (req, res) => {
   try {
     const { eventId, artistId } = req.params;
-    console.log('Removing artist from event:', { eventId, artistId });
-    
-    // Find the EventArtist relationship
-    const eventArtist = await eventArtistRepository.findOne({
-      where: {
-        event: { id: eventId },
-        artist: { id: artistId }
-      },
-      relations: ['event', 'artist']
-    });
 
+    const eventArtist = await eventArtistService.removeArtistFromEvent(eventId, artistId);
     if (!eventArtist) {
-      console.log('EventArtist relationship not found for:', { eventId, artistId });
-      return res.status(404).json({ 
+      return res.status(404).json({
         message: 'Artist not found in this event',
         eventId,
         artistId
       });
     }
 
-    console.log('Found EventArtist relationship:', eventArtist);
-
-    // Remove the relationship
-    await eventArtistRepository.remove(eventArtist);
-    
-    console.log('EventArtist relationship removed successfully');
-    
-    res.json({ 
+    res.json({
       message: `Artist ${eventArtist.artist.name} removed from event ${eventArtist.event.title}`,
       removedArtist: eventArtist.artist.name,
       eventTitle: eventArtist.event.title
@@ -233,4 +196,4 @@ router.put('/:id', authenticateJWT, updateEventArtist);
 router.delete('/:id', authenticateJWT, deleteEventArtist);
 router.delete('/event/:eventId/artist/:artistId', authenticateJWT, removeArtistFromEvent);
 
-export default router; 
+export default router;

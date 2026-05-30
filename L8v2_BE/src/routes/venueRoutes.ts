@@ -1,10 +1,9 @@
 import { Router, RequestHandler } from 'express';
-import { AppDataSource } from '../config/database';
-import { Venue } from '../models/Venue';
 import { authenticateJWT } from '../middleware/authMiddleware';
+import { VenueService } from '../services/VenueService';
 
 const router = Router();
-const venueRepository = AppDataSource.getRepository(Venue);
+const venueService = new VenueService();
 
 /**
  * @swagger
@@ -93,9 +92,7 @@ const venueRepository = AppDataSource.getRepository(Venue);
 // Get all venues
 const getAllVenues: RequestHandler = async (_req, res) => {
   try {
-    const venues = await venueRepository.find({
-      relations: ['events']
-    });
+    const venues = await venueService.getAllVenues();
     res.json(venues);
   } catch {
     res.status(500).json({ message: 'Error fetching venues' });
@@ -105,10 +102,7 @@ const getAllVenues: RequestHandler = async (_req, res) => {
 // Get venue by ID
 const getVenueById: RequestHandler = async (req, res) => {
   try {
-    const venue = await venueRepository.findOne({
-      where: { id: req.params.id },
-      relations: ['events']
-    });
+    const venue = await venueService.getVenueById(req.params.id);
     if (!venue) {
       res.status(404).json({ message: 'Venue not found' });
       return;
@@ -122,8 +116,7 @@ const getVenueById: RequestHandler = async (req, res) => {
 // Create venue
 const createVenue: RequestHandler = async (req, res) => {
   try {
-    const venue = venueRepository.create(req.body);
-    const result = await venueRepository.save(venue);
+    const result = await venueService.createVenue(req.body);
     res.status(201).json(result);
   } catch {
     res.status(500).json({ message: 'Error creating venue' });
@@ -133,16 +126,11 @@ const createVenue: RequestHandler = async (req, res) => {
 // Update venue
 const updateVenue: RequestHandler = async (req, res) => {
   try {
-    const venue = await venueRepository.findOne({
-      where: { id: req.params.id },
-      relations: ['events']
-    });
-    if (!venue) {
+    const result = await venueService.updateVenue(req.params.id, req.body);
+    if (!result) {
       res.status(404).json({ message: 'Venue not found' });
       return;
     }
-    venueRepository.merge(venue, req.body);
-    const result = await venueRepository.save(venue);
     res.json(result);
   } catch {
     res.status(500).json({ message: 'Error updating venue' });
@@ -152,15 +140,11 @@ const updateVenue: RequestHandler = async (req, res) => {
 // Delete venue
 const deleteVenue: RequestHandler = async (req, res) => {
   try {
-    const venue = await venueRepository.findOne({
-      where: { id: req.params.id },
-      relations: ['events']
-    });
-    if (!venue) {
+    const deleted = await venueService.deleteVenue(req.params.id);
+    if (!deleted) {
       res.status(404).json({ message: 'Venue not found' });
       return;
     }
-    await venueRepository.remove(venue);
     res.status(204).send();
   } catch {
     res.status(500).json({ message: 'Error deleting venue' });
@@ -173,4 +157,4 @@ router.post('/', authenticateJWT, createVenue);
 router.put('/:id', authenticateJWT, updateVenue);
 router.delete('/:id', authenticateJWT, deleteVenue);
 
-export default router; 
+export default router;

@@ -1,11 +1,9 @@
 import { Router } from 'express';
-import { AppDataSource } from '../config/database';
-import { User } from '../models/User';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { UserService } from '../services/UserService';
 
 const router = Router();
-const userRepo = AppDataSource.getRepository(User);
+const userService = new UserService();
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
 router.post('/login', async (req, res) => {
@@ -14,12 +12,8 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ message: 'Email and password are required' });
   }
   try {
-    const user = await userRepo.findOne({ where: { email } });
+    const user = await userService.validateUser(email, password);
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     const token = jwt.sign(
@@ -43,4 +37,4 @@ router.post('/login', async (req, res) => {
   }
 });
 
-export default router; 
+export default router;

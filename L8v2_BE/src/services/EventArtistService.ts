@@ -1,3 +1,4 @@
+import { DeepPartial } from 'typeorm';
 import { EventArtist } from '../models/EventArtist';
 import { EventArtistRepository } from '../repositories/EventArtistRepository';
 
@@ -9,44 +10,37 @@ export class EventArtistService {
   }
 
   async getAllEventArtists(): Promise<EventArtist[]> {
-    return this.eventArtistRepository.findAll();
+    return this.eventArtistRepository.findAllWithRelations();
   }
 
   async getEventArtistById(id: string): Promise<EventArtist | null> {
-    return this.eventArtistRepository.findById(id);
+    return this.eventArtistRepository.findByIdWithRelations(id);
   }
 
-  async createEventArtist(eventArtistData: Partial<EventArtist>): Promise<EventArtist> {
+  async createEventArtist(eventArtistData: DeepPartial<EventArtist>): Promise<EventArtist> {
     return this.eventArtistRepository.create(eventArtistData);
   }
 
-  async updateEventArtist(id: string, eventArtistData: Partial<EventArtist>): Promise<EventArtist | null> {
-    return this.eventArtistRepository.update(id, eventArtistData);
+  async updateEventArtist(id: string, eventArtistData: DeepPartial<EventArtist>): Promise<EventArtist | null> {
+    return this.eventArtistRepository.mergeAndSave(id, eventArtistData);
   }
 
-  async deleteEventArtist(id: string): Promise<void> {
-    return this.eventArtistRepository.delete(id);
+  async deleteEventArtist(id: string): Promise<boolean> {
+    const eventArtist = await this.eventArtistRepository.findById(id);
+    if (!eventArtist) return false;
+    await this.eventArtistRepository.delete(id);
+    return true;
   }
 
-  async findEventArtistsByEvent(eventId: string): Promise<EventArtist[]> {
-    return this.eventArtistRepository.findByEvent(eventId);
+  /**
+   * Removes the link between an event and an artist (by their IDs). Returns the
+   * removed record (with event + artist relations) so the caller can report it,
+   * or null when no such link exists.
+   */
+  async removeArtistFromEvent(eventId: string, artistId: string): Promise<EventArtist | null> {
+    const eventArtist = await this.eventArtistRepository.findByEventAndArtistWithRelations(eventId, artistId);
+    if (!eventArtist) return null;
+    await this.eventArtistRepository.delete(eventArtist.id);
+    return eventArtist;
   }
-
-  async findEventArtistsByArtist(artistId: string): Promise<EventArtist[]> {
-    return this.eventArtistRepository.findByArtist(artistId);
-  }
-
-  async findEventArtistByEventAndArtist(eventId: string, artistId: string): Promise<EventArtist | null> {
-    return this.eventArtistRepository.findByEventAndArtist(eventId, artistId);
-  }
-
-  async findArtistsByPerformanceOrder(eventId: string): Promise<EventArtist[]> {
-    return this.eventArtistRepository.findArtistsByPerformanceOrder(eventId);
-  }
-
-  async findArtistsByPerformanceTime(eventId: string): Promise<EventArtist[]> {
-    return this.eventArtistRepository.findArtistsByPerformanceTime(eventId);
-  }
-
-
-} 
+}

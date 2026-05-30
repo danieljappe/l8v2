@@ -1,3 +1,4 @@
+import { DeepPartial } from 'typeorm';
 import { Venue } from '../models/Venue';
 import { VenueRepository } from '../repositories/VenueRepository';
 
@@ -9,32 +10,25 @@ export class VenueService {
   }
 
   async getAllVenues(): Promise<Venue[]> {
-    return this.venueRepository.findAll();
+    return this.venueRepository.findAllWithEvents();
   }
 
   async getVenueById(id: string): Promise<Venue | null> {
-    return this.venueRepository.findById(id);
+    return this.venueRepository.findByIdWithEvents(id);
   }
 
-  async createVenue(venueData: Partial<Venue>): Promise<Venue> {
+  async createVenue(venueData: DeepPartial<Venue>): Promise<Venue> {
     return this.venueRepository.create(venueData);
   }
 
-  async updateVenue(id: string, venueData: Partial<Venue>): Promise<Venue | null> {
-    return this.venueRepository.update(id, venueData);
+  async updateVenue(id: string, venueData: DeepPartial<Venue>): Promise<Venue | null> {
+    return this.venueRepository.mergeAndSave(id, venueData);
   }
 
-  async deleteVenue(id: string): Promise<void> {
-    return this.venueRepository.delete(id);
+  async deleteVenue(id: string): Promise<boolean> {
+    const venue = await this.venueRepository.findById(id);
+    if (!venue) return false;
+    await this.venueRepository.delete(id);
+    return true;
   }
-
-  async findVenuesByName(name: string): Promise<Venue[]> {
-    const venue = await this.venueRepository.findByName(name);
-    return venue ? [venue] : [];
-  }
-
-  async findVenuesByCity(city: string): Promise<Venue[]> {
-    return this.venueRepository.findByCity(city);
-  }
-
 }
