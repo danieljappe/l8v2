@@ -31,6 +31,14 @@ export class EventArtistRepository extends BaseRepository<EventArtist> {
     });
   }
 
+  /** Finds an event-artist by its own id, constrained to an event, with the artist loaded. */
+  async findByIdAndEventWithArtist(id: string, eventId: string): Promise<EventArtist | null> {
+    return this.repository.findOne({
+      where: { id, event: { id: eventId } },
+      relations: ['artist']
+    });
+  }
+
   /**
    * Deletes all event-artist links for an event. Accepts an optional
    * EntityManager so it can run inside a caller's transaction (event cascade).
