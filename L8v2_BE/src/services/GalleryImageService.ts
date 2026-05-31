@@ -1,5 +1,5 @@
 import { DeepPartial } from 'typeorm';
-import { GalleryImage, GalleryCategory } from '../models/GalleryImage';
+import { GalleryImage } from '../models/GalleryImage';
 import { GalleryImageRepository } from '../repositories/GalleryImageRepository';
 import { EventRepository } from '../repositories/EventRepository';
 
@@ -65,31 +65,5 @@ export class GalleryImageService {
     if (!existing) return false;
     await this.galleryImageRepository.delete(id);
     return true;
-  }
-
-  // ── Existing helpers (retained for compatibility) ──────────────────────────
-
-  async findImagesByEvent(eventId: string): Promise<GalleryImage[]> {
-    return this.galleryImageRepository.findByEvent(eventId);
-  }
-
-  async findImagesByPhotographer(photographer: string): Promise<GalleryImage[]> {
-    return this.galleryImageRepository.findByPhotographer(photographer);
-  }
-
-  async findImagesByCategory(category: GalleryCategory): Promise<GalleryImage[]> {
-    return this.galleryImageRepository.findByCategory(category);
-  }
-
-  async findPublishedImages(): Promise<GalleryImage[]> {
-    return this.galleryImageRepository.findPublishedImages();
-  }
-
-  async publishImage(id: string): Promise<GalleryImage | null> {
-    return this.galleryImageRepository.update(id, { isPublished: true });
-  }
-
-  async unpublishImage(id: string): Promise<GalleryImage | null> {
-    return this.galleryImageRepository.update(id, { isPublished: false });
   }
 }

@@ -1,6 +1,6 @@
-import { GalleryImage, GalleryCategory } from '../models/GalleryImage';
+import { GalleryImage } from '../models/GalleryImage';
 import { BaseRepository } from './BaseRepository';
-import { Between, EntityManager, DeepPartial } from 'typeorm';
+import { EntityManager, DeepPartial } from 'typeorm';
 
 export class GalleryImageRepository extends BaseRepository<GalleryImage> {
   constructor() {
@@ -14,14 +14,6 @@ export class GalleryImageRepository extends BaseRepository<GalleryImage> {
   async deleteByEvent(eventId: string, manager?: EntityManager): Promise<void> {
     const repo = manager ? manager.getRepository(GalleryImage) : this.repository;
     await repo.delete({ eventId });
-  }
-
-  async findByEvent(eventId: string): Promise<GalleryImage[]> {
-    return this.repository.find({
-      where: {
-        eventId
-      }
-    });
   }
 
   /** Images for an event ordered by createdAt ASC (used by ?eventId=&limit=). */
@@ -39,45 +31,4 @@ export class GalleryImageRepository extends BaseRepository<GalleryImage> {
     this.repository.merge(image, data);
     return this.repository.save(image);
   }
-
-  async findByPhotographer(photographer: string): Promise<GalleryImage[]> {
-    return this.repository.find({
-      where: {
-        photographer
-      }
-    });
-  }
-
-  async findByCaption(caption: string): Promise<GalleryImage[]> {
-    return this.repository.find({
-      where: {
-        caption
-      }
-    });
-  }
-
-  async findByCategory(category: GalleryCategory): Promise<GalleryImage[]> {
-    return this.repository.find({
-      where: {
-        category,
-        isPublished: true
-      }
-    });
-  }
-
-  async findPublishedImages(): Promise<GalleryImage[]> {
-    return this.repository.find({
-      where: {
-        isPublished: true
-      }
-    });
-  }
-
-  async findImagesByDateRange(startDate: Date, endDate: Date): Promise<GalleryImage[]> {
-    return this.repository.find({
-      where: {
-        createdAt: Between(startDate, endDate)
-      }
-    });
-  }
-} 
+}

@@ -1,4 +1,4 @@
-import { IsNull, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { BillettoEventData } from '../models/BillettoEventData';
 import { BaseRepository } from './BaseRepository';
 
@@ -18,14 +18,6 @@ export class BillettoEventDataRepository extends BaseRepository<BillettoEventDat
 
   async findByBillettoEventId(billettoEventId: string): Promise<BillettoEventData | null> {
     return this.repository.findOneBy({ billettoEventId });
-  }
-
-  async findByEventId(eventId: string): Promise<BillettoEventData | null> {
-    return this.repository.findOneBy({ eventId });
-  }
-
-  async findUnlinked(): Promise<BillettoEventData[]> {
-    return this.repository.findBy({ eventId: IsNull() });
   }
 
   async findAllWithEvent(): Promise<BillettoEventData[]> {
