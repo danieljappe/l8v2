@@ -12,7 +12,7 @@ type ViewMode = 'grid' | 'rows' | 'table';
 
 function colorFromName(name: string): string {
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  for (let i = 0; i < name.length; i++) h = Math.trunc(h * 31 + name.charCodeAt(i));
   const hue = ((h % 360) + 360) % 360;
   return `oklch(0.50 0.08 ${hue})`;
 }
@@ -52,7 +52,7 @@ export default function VenuesList({ venues, onAddVenue, onUpdateVenue, onDelete
   const cities = useMemo(() => {
     const s = new Set<string>();
     venues.forEach(v => v.city && s.add(v.city));
-    return [...s].sort();
+    return [...s].sort((a, b) => a.localeCompare(b));
   }, [venues]);
 
   const filtered = useMemo(() => {

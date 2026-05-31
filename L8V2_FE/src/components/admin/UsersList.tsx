@@ -11,7 +11,7 @@ type ViewMode = 'grid' | 'table';
 
 function colorFromName(name: string): string {
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  for (let i = 0; i < name.length; i++) h = Math.trunc(h * 31 + name.charCodeAt(i));
   const hue = ((h % 360) + 360) % 360;
   return `oklch(0.55 0.14 ${hue})`;
 }
@@ -57,7 +57,7 @@ export default function UsersList({ currentUser }: UsersListProps) {
   const roles = useMemo(() => {
     const s = new Set<string>();
     users.forEach(u => u.role && s.add(u.role));
-    return [...s].sort();
+    return [...s].sort((a, b) => a.localeCompare(b));
   }, [users]);
 
   const filtered = useMemo(() => {
