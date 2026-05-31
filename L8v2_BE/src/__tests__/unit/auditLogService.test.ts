@@ -45,6 +45,19 @@ describe('AuditLogService.getAuditLogs — password redaction', () => {
     expect(row.oldValues.password).toBe('not-a-real-password-field');
   });
 
+  it('leaves user rows without a password key unchanged (no-op redaction branch)', async () => {
+    const svc = buildService([
+      { entityType: 'user', oldValues: { email: 'a@b.com' }, newValues: { email: 'a@b.com' } },
+    ]);
+
+    const page = await svc.getAuditLogs({ page: 1, limit: 20 });
+    const row = page.data[0] as { oldValues: Record<string, unknown>; newValues: Record<string, unknown> };
+
+    expect(row.oldValues).toEqual({ email: 'a@b.com' });
+    expect(row.newValues).toEqual({ email: 'a@b.com' });
+    expect(row.oldValues).not.toHaveProperty('password');
+  });
+
   it('leaves null old/new values untouched on user rows', async () => {
     const svc = buildService([
       { entityType: 'user', oldValues: null, newValues: { password: 'x' } },
