@@ -9,6 +9,8 @@ const contactMessageService = new ContactMessageService();
 // Stricter rate limiting specifically for contact form submissions
 // Limits: 3 submissions per 15 minutes per IP (much stricter than general rate limit)
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
+// IPv4-mapped loopback address produced by Node's net stack on dual-stack sockets.
+const LOCALHOST_V4_MAPPED = '::ffff:127.0.0.1';
 const contactFormLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isDevelopment ? 10 : 3, // 10 in dev, 3 in production per 15 minutes
@@ -24,7 +26,7 @@ const contactFormLimiter = rateLimit({
     // Skip for localhost in development
     if (isDevelopment) {
       const ip = req.ip || req.socket.remoteAddress || '';
-      if (ip.includes('127.0.0.1') || ip.includes('::1') || ip === '::ffff:127.0.0.1' || ip === 'localhost') {
+      if (ip.includes('127.0.0.1') || ip.includes('::1') || ip === LOCALHOST_V4_MAPPED || ip === 'localhost') {
         return true;
       }
     }

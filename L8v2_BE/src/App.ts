@@ -75,6 +75,10 @@ export function createApp(): Express {
   // Rate limiting configuration
   const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
 
+  // IPv4-mapped loopback address produced by Node's net stack when the host
+  // receives a request from 127.0.0.1 on a dual-stack socket.
+  const LOCALHOST_V4_MAPPED = '::ffff:127.0.0.1';
+
   const rateLimitConfig = {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: isDevelopment ? 1000 : parseInt(process.env.RATE_LIMIT_MAX || '500'),
@@ -87,7 +91,7 @@ export function createApp(): Express {
     skip: (req: express.Request, _res: express.Response) => {
       if (isDevelopment) {
         const ip = req.ip || req.socket.remoteAddress || '';
-        if (ip.includes('127.0.0.1') || ip.includes('::1') || ip === '::ffff:127.0.0.1' || ip === 'localhost') {
+        if (ip.includes('127.0.0.1') || ip.includes('::1') || ip === LOCALHOST_V4_MAPPED || ip === 'localhost') {
           return true;
         }
       }
