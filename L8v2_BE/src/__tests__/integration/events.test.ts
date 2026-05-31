@@ -280,3 +280,121 @@ describe('DELETE /api/events/:id', () => {
     expect(getRes.status).toBe(404);
   });
 });
+
+// ─── GET /api/events — upcoming / past / limit filters ────────────────────────
+
+describe('GET /api/events — filters', () => {
+  let token: string;
+
+  beforeAll(async () => {
+    const { user, plainPassword } = await createTestUser();
+    token = await getAuthToken(app, user.email, plainPassword);
+    await request(app)
+      .post('/api/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Future Fest', description: 'upcoming', date: '2099-01-01', startTime: '20:00' });
+    await request(app)
+      .post('/api/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Past Fest', description: 'past', date: '2000-01-01', startTime: '20:00' });
+  });
+
+  afterAll(async () => {
+    await cleanupDatabase();
+  });
+
+  it('?upcoming=true returns only future events', async () => {
+    const res = await request(app).get('/api/events?upcoming=true');
+    expect(res.status).toBe(200);
+    const titles = res.body.map((e: { title: string }) => e.title);
+    expect(titles).toContain('Future Fest');
+    expect(titles).not.toContain('Past Fest');
+  });
+
+  it('?past=true returns only past events', async () => {
+    const res = await request(app).get('/api/events?past=true');
+    expect(res.status).toBe(200);
+    const titles = res.body.map((e: { title: string }) => e.title);
+    expect(titles).toContain('Past Fest');
+    expect(titles).not.toContain('Future Fest');
+  });
+
+  it('?upcoming=true&limit=1 caps the number of rows', async () => {
+    const res = await request(app).get('/api/events?upcoming=true&limit=1');
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBeLessThanOrEqual(1);
+  });
+});
+
+// ─── Error / edge branches ────────────────────────────────────────────────────
+
+describe('GET /api/events/:id — invalid identifier', () => {
+  it('returns 400 for a whitespace-only identifier', async () => {
+    const res = await request(app).get('/api/events/%20');
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/invalid event identifier/i);
+  });
+});
+
+describe('POST /api/events — server error path', () => {
+  afterEach(async () => {
+    await cleanupDatabase();
+  });
+
+  it('returns 500 with an error field when required columns are missing', async () => {
+    const { user, plainPassword } = await createTestUser();
+    const token = await getAuthToken(app, user.email, plainPassword);
+
+    const res = await request(app)
+      .post('/api/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({}); // missing title/description/date/startTime → NOT NULL violation
+
+    expect(res.status).toBe(500);
+    expect(res.body.message).toBe('Error creating event');
+    expect(res.body).toHaveProperty('error');
+  });
+});
+
+describe('PUT /api/events/:id — venueId handling', () => {
+  let token: string;
+  let eventId: string;
+
+  beforeAll(async () => {
+    const { user, plainPassword } = await createTestUser();
+    token = await getAuthToken(app, user.email, plainPassword);
+    const ev = await request(app)
+      .post('/api/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Venue Link Event', description: 'x', date: '2099-02-02', startTime: '20:00' });
+    eventId = ev.body.id;
+  });
+
+  afterAll(async () => {
+    await cleanupDatabase();
+  });
+
+  it('accepts venueId: null (clears the relation)', async () => {
+    const res = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ venueId: null });
+    expect(res.status).toBe(200);
+  });
+
+  it('sets the venue relation when given a valid venueId', async () => {
+    const venue = await request(app)
+      .post('/api/venues')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Linked Venue', address: 'Street 1', city: 'Copenhagen' });
+    expect(venue.status).toBe(201);
+
+    const res = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ venueId: venue.body.id });
+
+    expect(res.status).toBe(200);
+    expect(res.body.venue?.id ?? res.body.venueId).toBe(venue.body.id);
+  });
+});

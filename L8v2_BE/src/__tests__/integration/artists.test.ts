@@ -509,3 +509,138 @@ describe('DELETE /api/artists/:id/embeddings/:embeddingId', () => {
     expect(ids).not.toContain(embeddingId);
   });
 });
+
+// ─── GET /api/artists — ?bookable filter ──────────────────────────────────────
+
+describe('GET /api/artists — ?bookable=true', () => {
+  afterAll(async () => {
+    await cleanupDatabase();
+  });
+
+  it('returns only bookable artists', async () => {
+    const { user, plainPassword } = await createTestUser();
+    const token = await getAuthToken(app, user.email, plainPassword);
+
+    await request(app)
+      .post('/api/artists')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Bookable Act', isBookable: true });
+    await request(app)
+      .post('/api/artists')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Hidden Act', isBookable: false });
+
+    const res = await request(app).get('/api/artists?bookable=true');
+    expect(res.status).toBe(200);
+    const names = res.body.map((a: { name: string }) => a.name);
+    expect(names).toContain('Bookable Act');
+    expect(names).not.toContain('Hidden Act');
+  });
+});
+
+// ─── DELETE /api/artists/:id — linked to an event (409-style 400) ─────────────
+
+describe('DELETE /api/artists/:id — linked to events', () => {
+  afterEach(async () => {
+    await cleanupDatabase();
+  });
+
+  it('returns 400 with related-event details when the artist is on an event', async () => {
+    const { user, plainPassword } = await createTestUser();
+    const token = await getAuthToken(app, user.email, plainPassword);
+
+    const artist = await request(app)
+      .post('/api/artists')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Linked Artist' });
+    const event = await request(app)
+      .post('/api/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Lineup Event', description: 'x', date: '2099-03-03', startTime: '20:00' });
+
+    const link = await request(app)
+      .post('/api/event-artists')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ event: { id: event.body.id }, artist: { id: artist.body.id } });
+    expect(link.status).toBe(201);
+
+    const res = await request(app)
+      .delete(`/api/artists/${artist.body.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/associated with events/i);
+    expect(res.body.relatedEvents).toBe(1);
+    expect(res.body.eventIds).toContain(event.body.id);
+  });
+});
+
+// ─── PUT /api/artists/:id — bookingUserId set/clear ──────────────────────────
+
+describe('PUT /api/artists/:id — bookingUserId handling', () => {
+  afterAll(async () => {
+    await cleanupDatabase();
+  });
+
+  it('sets and then clears bookingUserId', async () => {
+    const { user, plainPassword } = await createTestUser();
+    const token = await getAuthToken(app, user.email, plainPassword);
+
+    const artist = await request(app)
+      .post('/api/artists')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Booking Artist' });
+
+    const setRes = await request(app)
+      .put(`/api/artists/${artist.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ bookingUserId: user.id });
+    expect(setRes.status).toBe(200);
+    expect(setRes.body.bookingUserId).toBe(user.id);
+
+    const clearRes = await request(app)
+      .put(`/api/artists/${artist.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ bookingUserId: null });
+    expect(clearRes.status).toBe(200);
+    expect(clearRes.body.bookingUserId == null).toBe(true);
+  });
+});
+
+// ─── Embeddings on an artist that has no embeddings array ─────────────────────
+
+describe('Embeddings — artist without any embeddings', () => {
+  let token: string;
+  let artistId: string;
+
+  beforeAll(async () => {
+    const { user, plainPassword } = await createTestUser();
+    token = await getAuthToken(app, user.email, plainPassword);
+    const artist = await request(app)
+      .post('/api/artists')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'No Embeds Artist' });
+    artistId = artist.body.id;
+  });
+
+  afterAll(async () => {
+    await cleanupDatabase();
+  });
+
+  it('PUT embedding returns 404 "No embeddings found"', async () => {
+    const res = await request(app)
+      .put(`/api/artists/${artistId}/embeddings/whatever-id`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ embedCode: SPOTIFY_EMBED });
+    expect(res.status).toBe(404);
+    expect(res.body.message).toMatch(/no embeddings found/i);
+  });
+
+  it('DELETE embedding returns 404 "No embeddings found"', async () => {
+    const res = await request(app)
+      .delete(`/api/artists/${artistId}/embeddings/whatever-id`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(404);
+    expect(res.body.message).toMatch(/no embeddings found/i);
+  });
+});
