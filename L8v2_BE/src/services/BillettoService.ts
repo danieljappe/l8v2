@@ -1,3 +1,4 @@
+import { EntityManager } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Event } from '../models/Event';
 import { BillettoEventData } from '../models/BillettoEventData';
@@ -62,14 +63,19 @@ export class BillettoService {
     return nameMatch;
   }
 
-  private async upsertOne(billettoEvent: BillettoApiEvent, localEvent: Event | null): Promise<void> {
+  private async upsertOne(billettoEvent: BillettoApiEvent, localEvent: Event | null, manager?: EntityManager): Promise<void> {
     const billettoEventId = String(billettoEvent.id);
     const publicUrl = BillettoApiClient.extractPublicUrl(billettoEvent);
     const maxCapacity = BillettoApiClient.extractCapacity(billettoEvent);
     const ticketsAvailable = BillettoApiClient.extractTicketsAvailable(billettoEvent);
     const eventName = billettoEvent.name ?? undefined;
 
-    const record = await this.repo.findByBillettoEventId(billettoEventId);
+    const bedRepo = manager?.getRepository(BillettoEventData);
+    const evtRepo = manager?.getRepository(Event) ?? this.eventRepo;
+
+    const record = bedRepo
+      ? await bedRepo.findOneBy({ billettoEventId })
+      : await this.repo.findByBillettoEventId(billettoEventId);
 
     if (record) {
       record.publicUrl = publicUrl || record.publicUrl;
@@ -80,7 +86,7 @@ export class BillettoService {
       if (localEvent && !record.eventId) {
         record.eventId = localEvent.id;
       }
-      await this.repo.save(record);
+      await (bedRepo ?? this.repo).save(record);
     } else {
       const newRecord = new BillettoEventData();
       newRecord.billettoEventId = billettoEventId;
@@ -90,7 +96,7 @@ export class BillettoService {
       newRecord.ticketsAvailable = ticketsAvailable;
       newRecord.lastSyncedAt = new Date();
       newRecord.eventId = localEvent?.id ?? null;
-      await this.repo.save(newRecord);
+      await (bedRepo ?? this.repo).save(newRecord);
     }
 
     // Keep event.maxCapacity in sync so dashboard doesn't need to join billetto_event_data.
@@ -98,7 +104,7 @@ export class BillettoService {
     const linkedEventId = localEvent?.id ?? record?.eventId;
     if (linkedEventId) {
       const urlMissing = localEvent && !localEvent.billettoURL && publicUrl;
-      await this.eventRepo.update(linkedEventId, {
+      await evtRepo.update(linkedEventId, {
         ...(maxCapacity != null ? { maxCapacity } : {}),
         ...(urlMissing ? { billettoURL: publicUrl } : {}),
       });
@@ -152,38 +158,60 @@ export class BillettoService {
       return;
     }
 
-    switch (eventType) {
-      case 'event.created':
-      case 'event.updated': {
-        const id = data.id ?? data.event_id;
-        if (id) {
-          await this.syncSingleEvent(String(id));
-        }
-        break;
-      }
-      case 'event.cancelled': {
-        const id = data.id ?? data.event_id;
-        if (id) {
-          const record = await this.repo.findByBillettoEventId(String(id));
-          if (record) {
-            record.ticketsAvailable = 0;
-            record.lastSyncedAt = new Date();
-            await this.repo.save(record);
+    // Each webhook call gets its own QueryRunner so two concurrent webhooks never
+    // share a runner or a transaction.
+    const qr = AppDataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+    try {
+      // is_local=true: scopes the reset to this transaction only, so the stale
+      // session-level value on the pool connection is not touched.
+      await qr.query(`SELECT set_config('app.current_user_id', '', true)`);
+
+      switch (eventType) {
+        case 'event.created':
+        case 'event.updated': {
+          const id = data.id ?? data.event_id;
+          if (id) {
+            const billettoEvent = await this.apiClient.getEvent(String(id));
+            const localEvent = await this.matchLocalEvent(billettoEvent);
+            await this.upsertOne(billettoEvent, localEvent, qr.manager);
           }
+          break;
         }
-        break;
-      }
-      case 'order.completed':
-      case 'order.cancelled': {
-        // Re-sync the affected event to get updated ticket counts
-        const eventId = data.event_id ?? data.billetto_event_id;
-        if (eventId) {
-          await this.syncSingleEvent(String(eventId));
+        case 'event.cancelled': {
+          const id = data.id ?? data.event_id;
+          if (id) {
+            const record = await qr.manager.getRepository(BillettoEventData).findOneBy({ billettoEventId: String(id) });
+            if (record) {
+              record.ticketsAvailable = 0;
+              record.lastSyncedAt = new Date();
+              await qr.manager.getRepository(BillettoEventData).save(record);
+            }
+          }
+          break;
         }
-        break;
+        case 'order.completed':
+        case 'order.cancelled': {
+          // Re-sync the affected event to get updated ticket counts
+          const eventId = data.event_id ?? data.billetto_event_id;
+          if (eventId) {
+            const billettoEvent = await this.apiClient.getEvent(String(eventId));
+            const localEvent = await this.matchLocalEvent(billettoEvent);
+            await this.upsertOne(billettoEvent, localEvent, qr.manager);
+          }
+          break;
+        }
+        default:
+          console.log(`[BillettoService] Unhandled webhook type: ${eventType}`);
       }
-      default:
-        console.log(`[BillettoService] Unhandled webhook type: ${eventType}`);
+
+      await qr.commitTransaction();
+    } catch (err) {
+      await qr.rollbackTransaction();
+      throw err;
+    } finally {
+      await qr.release();
     }
   }
 
