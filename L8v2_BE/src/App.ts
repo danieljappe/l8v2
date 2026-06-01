@@ -105,6 +105,20 @@ export function createApp(): Express {
   const limiter = rateLimit(rateLimitConfig);
   app.use(limiter);
 
+  // Reset app.current_user_id at the start of every request so a previous
+  // authenticated request's session variable cannot bleed into subsequent
+  // unauthenticated requests that reuse the same pooled connection.
+  // (Bug A fix: prevents audit-log contamination. Bug B — non-attribution of
+  // authenticated writes across different pooled connections — requires a
+  // full architectural change: request-scoped QueryRunner propagation through
+  // all service/repository layers with is_local=true. Not implemented here.)
+  app.use(async (_req, _res, next) => {
+    try {
+      await AppDataSource.query(`SELECT set_config('app.current_user_id', '', false)`);
+    } catch { /* non-fatal */ }
+    next();
+  });
+
   if (isDevelopment) {
     console.log(`🚀 Rate limiting enabled in development mode (${rateLimitConfig.max} requests per 15 min, localhost bypassed)`);
   } else {
