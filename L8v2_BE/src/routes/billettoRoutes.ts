@@ -1,4 +1,5 @@
-import { Router, RequestHandler } from 'express';
+import { Router, RequestHandler, Request } from 'express';
+import crypto from 'crypto';
 import { authenticateJWT } from '../middleware/authMiddleware';
 import { BillettoService } from '../services/BillettoService';
 
@@ -92,22 +93,54 @@ const syncOne: RequestHandler = async (req, res) => {
   }
 };
 
-// Webhook — authenticated by BILLETTO_WEBHOOK_SECRET, NOT by JWT
-const handleWebhook: RequestHandler = async (req, res) => {
+// Verifies the Billetto-Signature HMAC-SHA256 header.
+// Format: "t=<unix_ts>,v1=<hex>[,v1=<hex>...]"
+// Signed string: "<t>.<rawBody>"
+// Returns false if secret is missing, header is absent/malformed, timestamp is
+// stale (>300 s), or no v1 value matches the expected digest.
+function verifyBillettoSignature(req: Request): boolean {
   const secret = process.env.BILLETTO_WEBHOOK_SECRET;
+  if (!secret) return false;
 
-  if (secret) {
-    // Billetto may send the secret as a Bearer token or in a custom header.
-    // Check both; log the raw headers once so you can confirm the format.
-    const authHeader = req.headers['authorization'] ?? '';
-    const customHeader = req.headers['x-billetto-secret'] ?? req.headers['x-webhook-secret'] ?? '';
-    const providedSecret = String(authHeader).replace('Bearer ', '') || String(customHeader);
+  const sigHeader = (req.headers['billetto-signature'] ?? '') as string;
+  if (!sigHeader) return false;
 
-    if (providedSecret !== secret) {
-      console.warn('[Billetto Webhook] Invalid secret. Headers received:', req.headers);
-      res.status(401).json({ message: 'Invalid webhook secret' });
-      return;
+  let t: string | undefined;
+  const v1Sigs: string[] = [];
+  for (const part of sigHeader.split(',')) {
+    const eqIdx = part.indexOf('=');
+    if (eqIdx === -1) continue;
+    const key = part.slice(0, eqIdx).trim();
+    const val = part.slice(eqIdx + 1).trim();
+    if (key === 't') t = val;
+    else if (key === 'v1') v1Sigs.push(val);
+  }
+  if (!t || v1Sigs.length === 0) return false;
+
+  const timestamp = parseInt(t, 10);
+  if (!Number.isFinite(timestamp)) return false;
+  // Replay protection: reject if |now - t| > 300 seconds
+  if (Math.abs(Math.floor(Date.now() / 1000) - timestamp) > 300) return false;
+
+  const rawBody = req.rawBody ?? '';
+  const expected = crypto.createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+
+  return v1Sigs.some(sig => {
+    try {
+      return crypto.timingSafeEqual(expectedBuf, Buffer.from(sig, 'utf8'));
+    } catch {
+      // timingSafeEqual throws on length mismatch — treat as no-match
+      return false;
     }
+  });
+}
+
+// Webhook — authenticated by HMAC-SHA256 (Billetto-Signature header), NOT by JWT
+const handleWebhook: RequestHandler = async (req, res) => {
+  if (!verifyBillettoSignature(req)) {
+    res.status(401).json({ message: 'Invalid webhook signature' });
+    return;
   }
 
   // Acknowledge immediately so Billetto doesn't retry
