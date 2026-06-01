@@ -55,61 +55,6 @@ beforeAll(async () => {
     FOR EACH ROW EXECUTE FUNCTION renumber_timeline_positions()
   `);
 
-  // log_change() — the audit trigger function (no pg_notify).
-  // Mirrors the live migration; needed here so audit-attribution integration
-  // tests can observe audit_logs without running the full migration chain.
-  await AppDataSource.query(`
-    CREATE OR REPLACE FUNCTION log_change()
-    RETURNS TRIGGER AS $$
-    DECLARE
-        v_user_id   text;
-        v_entity_id text;
-        v_old_data  json;
-        v_new_data  json;
-    BEGIN
-        v_user_id := current_setting('app.current_user_id', true);
-        IF v_user_id = '' THEN v_user_id := NULL; END IF;
-
-        IF TG_OP = 'DELETE' THEN
-            v_entity_id := OLD.id::text;
-            v_old_data  := row_to_json(OLD);
-            v_new_data  := NULL;
-        ELSIF TG_OP = 'INSERT' THEN
-            v_entity_id := NEW.id::text;
-            v_old_data  := NULL;
-            v_new_data  := row_to_json(NEW);
-        ELSE
-            v_entity_id := NEW.id::text;
-            v_old_data  := row_to_json(OLD);
-            v_new_data  := row_to_json(NEW);
-        END IF;
-
-        INSERT INTO audit_logs
-            ("userId", action, "entityType", "entityId", "oldValues", "newValues", "createdAt")
-        VALUES (
-            NULLIF(v_user_id, '')::uuid,
-            TG_OP,
-            TG_TABLE_NAME,
-            v_entity_id,
-            v_old_data,
-            v_new_data,
-            now()
-        );
-
-        RETURN COALESCE(NEW, OLD);
-    END;
-    $$ LANGUAGE plpgsql
-  `);
-
-  await AppDataSource.query(`
-    DROP TRIGGER IF EXISTS audit_billetto_event_data ON "billetto_event_data"
-  `);
-  await AppDataSource.query(`
-    CREATE TRIGGER audit_billetto_event_data
-        AFTER INSERT OR UPDATE OR DELETE ON "billetto_event_data"
-        FOR EACH ROW EXECUTE FUNCTION log_change()
-  `);
-
   await AppDataSource.query(`
     CREATE OR REPLACE VIEW "event_running_order" AS
     SELECT
