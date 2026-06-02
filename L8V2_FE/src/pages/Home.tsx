@@ -59,28 +59,25 @@ const staggerItem = {
 const Counter: React.FC<{ to: number; suffix?: string }> = ({ to, suffix = '' }) => {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true });
-  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!isInView) return;
+    if (!isInView || !ref.current) return;
+    const el = ref.current;
     let startTs: number | null = null;
     const duration = 1800;
+    let rafId: number;
     const tick = (ts: number) => {
       if (!startTs) startTs = ts;
       const progress = Math.min((ts - startTs) / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(to * eased));
-      if (progress < 1) requestAnimationFrame(tick);
+      el.textContent = String(Math.floor(to * eased)) + suffix;
+      if (progress < 1) rafId = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
-  }, [isInView, to]);
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [isInView, to, suffix]);
 
-  return (
-    <span ref={ref}>
-      {count}
-      {suffix}
-    </span>
-  );
+  return <span ref={ref}>0{suffix}</span>;
 };
 
 // ─── Infinite horizontal marquee ──────────────────────────────────────────────
@@ -124,10 +121,9 @@ interface OrbProps {
   size: number;
   color: string;
   opacity?: number;
-  delay?: number;
 }
 
-const Orb: React.FC<OrbProps> = ({ x, y, size, color, opacity = 0.4, delay = 0 }) => (
+const Orb: React.FC<OrbProps> = ({ x, y, size, color, opacity = 0.4 }) => (
   <div
     className="absolute rounded-full pointer-events-none"
     style={{
@@ -140,13 +136,7 @@ const Orb: React.FC<OrbProps> = ({ x, y, size, color, opacity = 0.4, delay = 0 }
       opacity,
       transform: 'translate(-50%, -50%)',
     }}
-  >
-    <motion.div
-      className="w-full h-full rounded-full"
-      animate={{ scale: [1, 1.14, 1] }}
-      transition={{ duration: 7 + delay * 1.5, repeat: Infinity, ease: 'easeInOut', delay }}
-    />
-  </div>
+  />
 );
 
 // ─── Glowing section divider ──────────────────────────────────────────────────
@@ -203,7 +193,7 @@ const HeroEventWidget: React.FC<{ event: Event; scrollOpacity: MotionValue<numbe
           whileTap={{ scale: 0.97 }}
           onClick={() => navigate(`/events/${slugify(event.title)}`)}
           className="cursor-pointer w-72 sm:w-80 rounded-2xl border border-l8-blue/20
-            bg-white/[0.055] backdrop-blur-2xl shadow-2xl shadow-black/50 overflow-hidden"
+            bg-black/50 shadow-2xl shadow-black/50 overflow-hidden"
         >
           {/* Subtle top accent line */}
           <div className="h-[1.5px] w-full bg-gradient-to-r from-transparent via-l8-blue/60 to-transparent" />
@@ -371,7 +361,7 @@ const PinnedShowcase: React.FC = () => {
 
   return (
     <div ref={sectionRef} className="relative h-[400vh]">
-      <div className="sticky top-0 h-screen flex items-center overflow-hidden">
+      <div className="sticky top-0 h-screen flex items-center overflow-hidden" style={{ willChange: 'transform' }}>
 
         {/* Per-slide background glows */}
         <div className="absolute inset-0 pointer-events-none">
@@ -473,23 +463,23 @@ const PinnedShowcase: React.FC = () => {
                   {
                     slideOpacity: s1Opacity, slidePtr: s1Ptr, slideScale: s1Scale, slideActive: s1Active,
                     photos: [
-                      { src: 'https://l8events.dk/uploads/gallery/image-1765282582367-411010143.jpg', pos: { top: '10%', left: '0%',  width: '60%' }, rotate: -6, z: 1, yMV: s1Y   },
-                      { src: 'https://l8events.dk/uploads/gallery/image-1763652178542-895823745.jpg', pos: { top: '0%',  right: '2%', width: '38%' }, rotate:  8, z: 2, yMV: s1p2Y },
-                      { src: 'https://l8events.dk/uploads/gallery/image-1763651503011-791559750.jpg', pos: { bottom: '0%', right: '0%', width: '50%' }, rotate: -4, z: 3, yMV: s1p3Y },
+                      { src: '/images/01_image1.jpg', pos: { top: '10%', left: '0%',  width: '60%' }, rotate: -6, z: 1, yMV: s1Y   },
+                      { src: '/images/01_image2.jpg', pos: { top: '0%',  right: '2%', width: '38%' }, rotate:  8, z: 2, yMV: s1p2Y },
+                      { src: '/images/01_image3.jpg', pos: { bottom: '0%', right: '0%', width: '50%' }, rotate: -4, z: 3, yMV: s1p3Y },
                     ],
                   },
                   {
                     slideOpacity: s2Opacity, slidePtr: s2Ptr, slideScale: s2Scale, slideActive: s2Active,
                     photos: [
-                      { src: 'https://l8events.dk/uploads/gallery/image-1763650597555-58480668.jpg',  pos: { top: '8%',    left: '4%',  width: '58%' }, rotate: -5, z: 1, yMV: s2Y   },
-                      { src: 'https://l8events.dk/uploads/gallery/image-1765280169143-317406417.jpg', pos: { top: '0%',    right: '0%', width: '40%' }, rotate:  9, z: 2, yMV: s2p2Y },
-                      { src: 'https://l8events.dk/uploads/gallery/image-1763650616959-163146487.jpg', pos: { bottom: '2%', left: '16%', width: '52%' }, rotate: -3, z: 3, yMV: s2p3Y },
+                      { src: '/images/02_image1.jpg', pos: { top: '8%',    left: '4%',  width: '58%' }, rotate: -5, z: 1, yMV: s2Y   },
+                      { src: '/images/02_image2.jpg', pos: { top: '0%',    right: '0%', width: '40%' }, rotate:  9, z: 2, yMV: s2p2Y },
+                      { src: '/images/02_image3.jpg', pos: { bottom: '2%', left: '16%', width: '52%' }, rotate: -3, z: 3, yMV: s2p3Y },
                     ],
                   },
                   {
                     slideOpacity: s3Opacity, slidePtr: s3Ptr, slideScale: s3Scale, slideActive: s3Active,
                     photos: [
-                      { src: 'https://l8events.dk/uploads/gallery/image-1765280815686-895715630.png', pos: { top: '10%', left: '10%', width: '80%' }, rotate: -3, z: 1, yMV: s3Y },
+                      { src: '/images/03_image1.jpg', pos: { top: '10%', left: '10%', width: '80%' }, rotate: -3, z: 1, yMV: s3Y },
                     ],
                   },
                 ] as {
@@ -645,14 +635,14 @@ const Home: React.FC = () => {
         className="relative h-screen flex flex-col items-center justify-center overflow-hidden"
       >
         {/* Ambient orbs with independent parallax */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ contain: 'layout style' }}>
           <motion.div className="absolute inset-0" style={{ y: orb1Y }}>
-            <Orb x="22%" y="32%" size={480} color="#00c0ff" opacity={0.07} delay={0} />
+            <Orb x="22%" y="32%" size={480} color="#00c0ff" opacity={0.07} />
           </motion.div>
           <motion.div className="absolute inset-0" style={{ y: orb2Y }}>
-            <Orb x="78%" y="62%" size={400} color="#0099cc" opacity={0.055} delay={2.5} />
+            <Orb x="78%" y="62%" size={400} color="#0099cc" opacity={0.055} />
           </motion.div>
-          <Orb x="50%" y="85%" size={300} color="#f9dfc7" opacity={0.035} delay={5} />
+          <Orb x="50%" y="85%" size={300} color="#f9dfc7" opacity={0.035} />
         </div>
 
         {/* Dot-grid overlay */}
@@ -685,25 +675,15 @@ const Home: React.FC = () => {
             Events Platform
           </motion.div>
 
-          {/* Giant "L8" — letterSpacing animates on entrance */}
-          <motion.h1
-            initial={{ opacity: 0, y: 50, letterSpacing: '0.25em' }}
-            animate={{ opacity: 1, y: 0, letterSpacing: '-0.02em' }}
-            transition={{ duration: 1.05, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="text-[7rem] sm:text-[9rem] md:text-[13rem] font-bold leading-none text-white"
-          >
-            L8
-          </motion.h1>
-
-          {/* "Events" */}
-          <motion.p
-            initial={{ opacity: 0, y: 24 }}
+          {/* Logo */}
+          <motion.img
+            src="/l8logo_nobackground.webp"
+            alt="L8 Events"
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, delay: 0.32, ease: [0.16, 1, 0.3, 1] }}
-            className="text-xl sm:text-2xl md:text-4xl font-light tracking-[0.38em] text-l8-beige uppercase mb-8"
-          >
-            Events
-          </motion.p>
+            transition={{ duration: 1.05, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="w-40 sm:w-52 md:w-64 mx-auto mb-8"
+          />
 
           {/* Tagline */}
           <motion.p
@@ -853,8 +833,8 @@ const Home: React.FC = () => {
                 transition={{ type: 'spring', stiffness: 270, damping: 20 }}
                 onClick={() => navigate(route)}
                 className={`group cursor-pointer rounded-3xl border ${borderColor}
-                  bg-white/[0.04] backdrop-blur-xl p-8 flex flex-col h-72
-                  hover:bg-white/[0.07] transition-colors duration-300`}
+                  bg-white/[0.07] p-8 flex flex-col h-72
+                  hover:bg-white/[0.11] transition-colors duration-300`}
               >
                 <div className={`w-12 h-12 ${iconBg} rounded-xl flex items-center justify-center mb-6 shrink-0`}>
                   <Icon className={`w-5 h-5 ${iconColor}`} />
