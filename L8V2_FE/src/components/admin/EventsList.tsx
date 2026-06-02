@@ -36,7 +36,7 @@ function fmtDateParts(dateStr: string) {
 
 function posterColor(title: string): string {
   let h = 0;
-  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) | 0;
+  for (let i = 0; i < title.length; i++) h = Math.trunc(h * 31 + title.charCodeAt(i));
   const hue = ((h % 360) + 360) % 360;
   return `oklch(0.35 0.12 ${hue})`;
 }

@@ -29,7 +29,7 @@ interface ArtistFormModalProps {
 function colorFromName(name: string): string {
   if (!name) return 'oklch(0.55 0.05 250)';
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  for (let i = 0; i < name.length; i++) h = Math.trunc(h * 31 + name.charCodeAt(i));
   return `oklch(0.55 0.14 ${((h % 360) + 360) % 360})`;
 }
 

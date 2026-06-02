@@ -254,6 +254,8 @@ const uploadGalleryImage: RequestHandler = async (req, res) => {
 // Rate limiting middleware for uploads
 // More lenient in development, stricter in production
 const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+// IPv4-mapped loopback address produced by Node's net stack on dual-stack sockets.
+const LOCALHOST_V4_MAPPED = '::ffff:127.0.0.1';
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isDevelopment ? 200 : 50, // More lenient in development (200 vs 50 in production)
@@ -262,7 +264,7 @@ const uploadLimiter = rateLimit({
     if (isDevelopment) {
       const ip = req.ip || req.socket.remoteAddress || '';
       // Skip for localhost in development
-      if (ip.includes('127.0.0.1') || ip.includes('::1') || ip === '::ffff:127.0.0.1' || ip === 'localhost') {
+      if (ip.includes('127.0.0.1') || ip.includes('::1') || ip === LOCALHOST_V4_MAPPED || ip === 'localhost') {
         return true;
       }
     }

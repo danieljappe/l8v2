@@ -19,7 +19,7 @@ function imgBg(url?: string): string {
   // deterministic placeholder color from url
   if (!url) return 'oklch(0.55 0.1 250)';
   let h = 0;
-  for (let i = 0; i < url.length; i++) h = (h * 31 + url.charCodeAt(i)) | 0;
+  for (let i = 0; i < url.length; i++) h = Math.trunc(h * 31 + url.charCodeAt(i));
   const hue = ((h % 360) + 360) % 360;
   return `oklch(0.55 0.1 ${hue})`;
 }
