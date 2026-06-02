@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Franklin Gothic';
+  src: url('/fonts/Franklin Gothic Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Franklin Gothic';
+  src: url('/fonts/Franklin Gothic ITALIC.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Franklin Gothic';
+  src: url('/fonts/Franklin Gothic Heavy Regular.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  font-family: 'Franklin Gothic', Impact, sans-serif;
+  font-synthesis: none;
+}
+
 /* iOS safe area padding — keeps page gradients intact, only adds space */
 body {
   padding-top: env(safe-area-inset-top);

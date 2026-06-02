@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16
+    container_name: l8v2-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: l8v2
+    ports:
+      - "5432:5432"
+    volumes:
+      - l8v2_db_data:/var/lib/postgresql/data
+
+volumes:
+  l8v2_db_data:
+    external: true
+    name: l8v2_be_l8v2_db_data

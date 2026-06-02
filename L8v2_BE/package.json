@@ -14,6 +14,8 @@
     "migration:revert": "npm run typeorm -- migration:revert -d typeorm.config.ts",
     "migration:show": "npm run typeorm -- migration:show -d typeorm.config.ts",
     "migration:custom": "ts-node run-migration.ts",
+    "db:start": "docker compose up -d",
+    "db:stop": "docker compose down",
     "benchmark": "ts-node src/scripts/benchmark.ts",
     "lint": "eslint .",
     "test": "jest --runInBand",

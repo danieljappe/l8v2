@@ -20,7 +20,7 @@
   --danger:      oklch(0.55 0.18 28);
   --danger-soft: oklch(0.94 0.05 28);
 
-  --font-display: Georgia, 'Times New Roman', serif;
+  --font-display: 'Franklin Gothic', Impact, sans-serif;
   --font-ui:      system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono:    ui-monospace, 'SF Mono', 'Cascadia Mono', monospace;
 

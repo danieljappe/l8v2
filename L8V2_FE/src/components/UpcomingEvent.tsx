@@ -121,7 +121,7 @@ const UpcomingEvent: React.FC = () => {
             variants={itemVariants}
             whileHover={{ scale: 1.02, y: -5 }}
             whileTap={{ scale: 0.98 }}
-            className="bg-white/[0.04] backdrop-blur-xl rounded-3xl border border-l8-blue/15 p-6 sm:p-8 md:p-12 shadow-2xl transition-all duration-300"
+            className="bg-white/[0.08] rounded-3xl border border-l8-blue/15 p-6 sm:p-8 md:p-12 shadow-2xl transition-all duration-300"
           >
             {/* Event Badge */}
             <motion.div
@@ -195,7 +195,7 @@ const UpcomingEvent: React.FC = () => {
                       e.stopPropagation();
                       setSelectedArtist(artist);
                     }}
-                    className="bg-white/5 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/10 cursor-pointer group"
+                    className="bg-white/5 rounded-xl p-3 sm:p-4 border border-white/10 cursor-pointer group"
                   >
                     <motion.div 
                       whileHover={{ rotate: 360 }}

@@ -131,7 +131,7 @@ const PreviousEventGallery: React.FC = () => {
 
         <motion.div 
           variants={itemVariants}
-          className="bg-white/[0.04] backdrop-blur-xl rounded-3xl border border-l8-blue/15 p-4 sm:p-6 md:p-8 shadow-2xl"
+          className="bg-white/[0.08] rounded-3xl border border-l8-blue/15 p-4 sm:p-6 md:p-8 shadow-2xl"
         >
           {/* Event Info */}
           <motion.div 
@@ -267,12 +267,7 @@ const PreviousEventGallery: React.FC = () => {
                 className="inline-flex items-center space-x-2 bg-l8-blue hover:bg-l8-blue-dark text-white font-medium px-4 sm:px-6 py-2 sm:py-3 rounded-xl transition-all duration-300 border border-l8-blue/20 text-sm sm:text-base"
               >
                 <span>Se Event</span>
-                <motion.div
-                  animate={{ x: [0, 5, 0] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </motion.div>
+                <ArrowRight className="w-4 h-4" />
               </motion.button>
             )}
             
