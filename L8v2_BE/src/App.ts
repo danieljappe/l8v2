@@ -63,7 +63,11 @@ export function createApp(): Express {
       },
     },
   }));
-  app.use(express.json());
+  app.use(express.json({
+    verify: (req, _res, buf) => {
+      (req as Express.Request).rawBody = buf.toString('utf8');
+    },
+  }));
   app.use(express.urlencoded({ extended: true }));
 
   // Serve uploaded images statically
