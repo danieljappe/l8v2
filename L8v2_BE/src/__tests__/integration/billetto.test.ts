@@ -1,6 +1,8 @@
 import request from 'supertest';
 import crypto from 'crypto';
 import { createTestApp, createTestUser, getAuthToken, cleanupDatabase } from '../helpers';
+import { AppDataSource } from '../../config/database';
+import { BillettoEventData } from '../../models/BillettoEventData';
 
 const app = createTestApp();
 
@@ -168,5 +170,55 @@ describe('POST /api/billetto/webhook — HMAC-SHA256 verification', () => {
       .send(PAYLOAD);
 
     expect(res.status).toBe(401);
+  });
+
+  it('is idempotent: delivering the same event.cancelled webhook twice leaves exactly one row with ticketsAvailable=0', async () => {
+    process.env.BILLETTO_WEBHOOK_SECRET = TEST_SECRET;
+
+    // Pre-insert the row the cancelled handler looks up — it only acts on existing records.
+    const billettoEventId = 'idem-test-evt-1';
+    const bed = new BillettoEventData();
+    bed.billettoEventId = billettoEventId;
+    bed.publicUrl = 'https://billetto.dk/e/idem-test-1';
+    bed.ticketsAvailable = 50;
+    bed.maxCapacity = 100;
+    bed.lastSyncedAt = new Date();
+    await AppDataSource.getRepository(BillettoEventData).save(bed);
+
+    const cancelPayload = JSON.stringify({ type: 'event.cancelled', data: { id: billettoEventId } });
+    // Flush the async post-response processing for each webhook delivery.
+    const drain = () => new Promise<void>(resolve => setTimeout(resolve, 100));
+
+    // First delivery
+    const res1 = await request(app)
+      .post('/api/billetto/webhook')
+      .set('Content-Type', 'application/json')
+      .set('Billetto-Signature', signWebhook(cancelPayload, TEST_SECRET))
+      .send(cancelPayload);
+    expect(res1.status).toBe(200);
+    await drain();
+
+    const afterFirst = await AppDataSource.getRepository(BillettoEventData).find({
+      where: { billettoEventId },
+    });
+    expect(afterFirst).toHaveLength(1);
+    expect(afterFirst[0].ticketsAvailable).toBe(0);
+
+    // Second delivery — identical payload, fresh timestamp in the signature
+    const res2 = await request(app)
+      .post('/api/billetto/webhook')
+      .set('Content-Type', 'application/json')
+      .set('Billetto-Signature', signWebhook(cancelPayload, TEST_SECRET))
+      .send(cancelPayload);
+    expect(res2.status).toBe(200);
+    await drain();
+
+    const afterSecond = await AppDataSource.getRepository(BillettoEventData).find({
+      where: { billettoEventId },
+    });
+    expect(afterSecond).toHaveLength(1);
+    expect(afterSecond[0].ticketsAvailable).toBe(afterFirst[0].ticketsAvailable);
+    expect(afterSecond[0].publicUrl).toBe(afterFirst[0].publicUrl);
+    expect(afterSecond[0].maxCapacity).toBe(afterFirst[0].maxCapacity);
   });
 });
