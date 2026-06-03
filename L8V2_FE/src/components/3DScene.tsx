@@ -74,6 +74,12 @@ const Scene = ({ onReady }: SceneProps) => {
   const [modelReady, setModelReady] = useState(false);
   const readyCallbackRef = useRef<(() => void) | undefined>(onReady);
   const modelReadyRef = useRef(false);
+
+  useEffect(() => {
+    console.log('[3DScene] Scene mounted — attempting WebGL canvas at',
+      performance.now().toFixed(1), 'ms');
+    return () => console.log('[3DScene] Scene unmounted');
+  }, []);
   
   // Update ref when onReady changes
   useEffect(() => {
@@ -116,10 +122,13 @@ const Scene = ({ onReady }: SceneProps) => {
       camera={{ position: [0, 0, 0], fov: 75 }}
       style={{ background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)' }}
       onCreated={() => {
+        console.log('[3DScene] onCreated fired — WebGL context ready at',
+          performance.now().toFixed(1), 'ms');
         setCanvasReady(true);
         // Fallback timeout in case model takes too long to load
         const timeout = setTimeout(() => {
           if (readyCallbackRef.current && !modelReadyRef.current) {
+            console.warn('[3DScene] 3s model fallback fired — GLTF did not load in time');
             readyCallbackRef.current();
           }
         }, 3000);

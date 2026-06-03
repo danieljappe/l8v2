@@ -27,6 +27,15 @@ const FadeUp: React.FC<{ children: React.ReactNode; delay?: number; className?: 
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-80px 0px' });
+
+  // Debug: log each observer fire with a timestamp — batched callbacks
+  // (multiple lines within the same ms) indicate main-thread starvation.
+  useEffect(() => {
+    if (isInView) {
+      console.log('[FadeUp] observer fired at', performance.now().toFixed(1), 'ms');
+    }
+  }, [isInView]);
+
   return (
     <motion.div
       ref={ref}

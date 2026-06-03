@@ -48,9 +48,8 @@ function Model({ mousePosition, onReady }: ModelProps) {
     if (modelRef.current) {
       modelRef.current.position.set(0, 0, -20);
       modelRef.current.scale.setScalar(0.7);
-      // Notify that model is ready
+      console.log('[3DModel] GLTF loaded and mounted at', performance.now().toFixed(1), 'ms');
       if (onReady) {
-        // Small delay to ensure everything is rendered
         setTimeout(() => onReady(), 100);
       }
     }
