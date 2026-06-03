@@ -20,6 +20,15 @@ const PlatformChoice: React.FC = () => {
     });
   }, []);
 
+  // Unconditional safety-net: if WebGL never initialises (context failure,
+  // battery-saver, GPU blocklist) Canvas.onCreated never fires and the
+  // existing 3-second fallback inside it never arms. This timeout fires on
+  // mount regardless, guaranteeing the gate can never hang forever.
+  useEffect(() => {
+    const fallback = setTimeout(() => setSceneReady(true), 4000);
+    return () => clearTimeout(fallback);
+  }, []);
+
   // Prioritize 3D scene - show content when scene is ready
   // Images can load in background
   useEffect(() => {
