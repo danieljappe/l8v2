@@ -4,6 +4,11 @@ import { motion } from 'framer-motion';
 const SocialMediaSection: React.FC = () => {
   const socialLinks = [
     {
+      name: 'Instagram',
+      icon: '/icons/Instagram_icon.png',
+      href: 'https://www.instagram.com/aldrigl8',
+    },
+    {
       name: 'Facebook',
       icon: '/icons/facebook_icon.png',
       href: 'https://www.facebook.com/profile.php?id=61556066605549',
@@ -51,30 +56,8 @@ const SocialMediaSection: React.FC = () => {
           </p>
         </motion.div>
 
-        {/* Main layout: Instagram left | FB + TikTok right */}
-        <div className="flex flex-col md:flex-row gap-6 items-stretch">
-
-          {/* Instagram widget */}
-          <motion.div
-            variants={itemVariants}
-            className="w-full md:flex-[3] border border-l8-blue/10 rounded-3xl overflow-hidden shadow-2xl"
-            style={{ backgroundColor: '#fafafa', minHeight: 400 }}
-          >
-            <iframe
-              src="https://emb.fouita.com/widget/0x34cf9e/ftbngklcwg"
-              title="Carousel Instagram Feed"
-              width="100%"
-              height="720"
-              frameBorder="0"
-              scrolling="no"
-              className="w-full block"
-              style={{ display: 'block', minHeight: 400 }}
-              allowFullScreen
-            />
-          </motion.div>
-
-          {/* Facebook + TikTok — stacked vertically on desktop, side-by-side on mobile */}
-          <div className="flex flex-row md:flex-col gap-4 md:gap-6 md:flex-1">
+        {/* Social links */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             {socialLinks.map((social) => (
               <motion.a
                 key={social.name}
@@ -115,8 +98,6 @@ const SocialMediaSection: React.FC = () => {
                 </div>
               </motion.a>
             ))}
-          </div>
-
         </div>
       </motion.div>
     </section>
