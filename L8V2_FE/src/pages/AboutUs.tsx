@@ -258,8 +258,7 @@ const AboutUs = () => {
       <motion.div
         variants={staggerContainer}
         initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
+        animate="visible"
         className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 mb-20"
       >
         {stats.map((stat, index) => (

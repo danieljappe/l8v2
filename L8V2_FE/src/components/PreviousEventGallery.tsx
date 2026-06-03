@@ -107,8 +107,7 @@ const PreviousEventGallery: React.FC = () => {
       <motion.div 
         variants={containerVariants}
         initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.3 }}
+        animate="visible"
         className="container mx-auto max-w-6xl"
       >
         <motion.div variants={itemVariants} className="text-center mb-8 sm:mb-12">
