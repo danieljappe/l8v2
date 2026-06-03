@@ -23,8 +23,20 @@ class SceneErrorBoundary extends React.Component<
 const PlatformChoice: React.FC = () => {
   const navigate = useNavigate();
 
+  // Decide at render time — never mount Canvas on mobile or without WebGL.
+  // Kept inside the component so window is guaranteed to exist.
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const hasWebGL = (() => {
+    try {
+      const c = document.createElement('canvas');
+      return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    } catch { return false; }
+  })();
+  const useDesktopScene = !isMobile && hasWebGL;
+
   useEffect(() => {
-    console.log('[PlatformChoice] mounted at', performance.now().toFixed(1), 'ms');
+    console.log('[PlatformChoice] mounted at', performance.now().toFixed(1), 'ms',
+      '| mobile:', isMobile, '| webgl:', hasWebGL);
   }, []);
 
   // Preload images in background (non-blocking, for better UX)
@@ -51,9 +63,20 @@ const PlatformChoice: React.FC = () => {
       {/* 3D Background — loads independently, fails silently.
           Content is never gated on this; it renders regardless. */}
       <div className="absolute inset-0 z-0">
-        <SceneErrorBoundary>
-          <Scene />
-        </SceneErrorBoundary>
+        {useDesktopScene ? (
+          <SceneErrorBoundary>
+            <Scene />
+          </SceneErrorBoundary>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center
+                          bg-gradient-to-br from-[#0c0c0c] via-[#1a1a2e] to-[#16213e]">
+            <img
+              src="/l8logo_nobackground.webp"
+              alt=""
+              className="w-48 opacity-20 select-none pointer-events-none"
+            />
+          </div>
+        )}
       </div>
 
       {/* Split Background Overlay — always rendered; framer-motion
