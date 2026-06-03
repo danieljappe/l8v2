@@ -122,6 +122,13 @@ export function createApp(): Express {
     console.log(`🛡️ Rate limiting enabled in ${process.env.NODE_ENV} mode (${rateLimitConfig.max} requests per 15 min)`);
   }
 
+  // Prevent 304 stalls on dynamic API responses (WebKit hangs on empty 304 bodies).
+  // Scoped strictly to /api/*; /uploads uses max-age=1y immutable and is unaffected.
+  app.use('/api', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+
   // Routes
   app.use('/api/users', userRoutes);
   app.use('/api/artists', artistRoutes);
