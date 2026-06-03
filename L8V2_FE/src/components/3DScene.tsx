@@ -1,8 +1,22 @@
 import { Suspense, useEffect, useState, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import Model from './3DModel';
+
+// Must live inside Canvas so useThree() works. React unmounts children
+// before the parent, so this cleanup runs before R3F's own disposal —
+// forceContextLoss() fires first, preventing INVALID_OPERATION cascades
+// when gl.delete*() is later called against an already-lost context.
+function ContextLossGuard() {
+  const { gl } = useThree();
+  useEffect(() => {
+    return () => {
+      try { gl.forceContextLoss(); } catch { /* already lost, ignore */ }
+    };
+  }, [gl]);
+  return null;
+}
 
 // Moving stars component that responds to mouse
 const MovingStars = ({ mousePosition }: { mousePosition: THREE.Vector2 }) => {
@@ -118,7 +132,7 @@ const Scene = ({ onReady }: SceneProps) => {
   };
 
   return (
-    <Canvas 
+    <Canvas
       camera={{ position: [0, 0, 0], fov: 75 }}
       style={{ background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)' }}
       onCreated={() => {
@@ -137,6 +151,7 @@ const Scene = ({ onReady }: SceneProps) => {
         win.__sceneTimeout = timeout;
       }}
     >
+      <ContextLossGuard />
       {/* Moving atmospheric background elements */}
       <MovingStars mousePosition={mousePosition} />
       

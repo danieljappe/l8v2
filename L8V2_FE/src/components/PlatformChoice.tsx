@@ -1,11 +1,8 @@
-import React, { Suspense, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-// Lazy-load the entire Three.js / R3F scene so its bundle and the GLTF
-// fetch cannot block initial render or hold the browser load event open.
-const LazyScene = React.lazy(() => import('./3DScene'));
+import Scene from './3DScene';
 
 // WebGL context creation throws on mobile (battery-saver, GPU blocklist,
 // context limits). Catch the error and render nothing — the 3D background
@@ -54,11 +51,9 @@ const PlatformChoice: React.FC = () => {
       {/* 3D Background — loads independently, fails silently.
           Content is never gated on this; it renders regardless. */}
       <div className="absolute inset-0 z-0">
-        <Suspense fallback={null}>
-          <SceneErrorBoundary>
-            <LazyScene />
-          </SceneErrorBoundary>
-        </Suspense>
+        <SceneErrorBoundary>
+          <Scene />
+        </SceneErrorBoundary>
       </div>
 
       {/* Split Background Overlay — always rendered; framer-motion

@@ -27,9 +27,16 @@ const FadeUp: React.FC<{ children: React.ReactNode; delay?: number; className?: 
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-80px 0px' });
+  const [timedOut, setTimedOut] = useState(false);
 
-  // Debug: log each observer fire with a timestamp — batched callbacks
-  // (multiple lines within the same ms) indicate main-thread starvation.
+  // Visibility floor: reveal after 1500ms regardless of observer state.
+  // Prevents content staying invisible if the IntersectionObserver is
+  // delayed by main-thread starvation (e.g. WebGL disposal errors).
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     if (isInView) {
       console.log('[FadeUp] observer fired at', performance.now().toFixed(1), 'ms');
@@ -40,7 +47,7 @@ const FadeUp: React.FC<{ children: React.ReactNode; delay?: number; className?: 
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 48 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 48 }}
+      animate={isInView || timedOut ? { opacity: 1, y: 0 } : { opacity: 0, y: 48 }}
       transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
       className={className}
     >
@@ -595,6 +602,12 @@ const PinnedShowcase: React.FC = () => {
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const heroRef = useRef<HTMLElement>(null);
+  const [navCardsReady, setNavCardsReady] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setNavCardsReady(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   const { data: upcomingEvents } = useUpcomingEvents(1);
   const upcomingEvent = upcomingEvents?.[0] ?? null;
@@ -798,6 +811,7 @@ const Home: React.FC = () => {
           <motion.div
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
             initial="hidden"
+            animate={navCardsReady ? 'visible' : undefined}
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
             variants={staggerContainer}
