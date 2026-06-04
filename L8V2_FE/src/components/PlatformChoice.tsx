@@ -1,8 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import Scene from './3DScene';
+
+// Lazy — Three.js (~600 kB) is never fetched or parsed on the mobile path
+// because <Scene> is only rendered when useDesktopScene is true.
+const Scene = React.lazy(() => import('./3DScene'));
 
 // WebGL context creation throws on mobile (battery-saver, GPU blocklist,
 // context limits). Catch the error and render nothing — the 3D background
@@ -65,7 +68,9 @@ const PlatformChoice: React.FC = () => {
       <div className="absolute inset-0 z-0">
         {useDesktopScene ? (
           <SceneErrorBoundary>
-            <Scene />
+            <Suspense fallback={null}>
+              <Scene />
+            </Suspense>
           </SceneErrorBoundary>
         ) : (
           <div className="w-full h-full flex items-center justify-center
