@@ -37,12 +37,6 @@ export class BillettoEventData {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  get availabilityLabel(): string | null {
-    if (this.ticketsAvailable == null) return null;
-    if (this.ticketsAvailable === 0) return 'Udsolgt';
-    const ratio = this.maxCapacity ? this.ticketsAvailable / this.maxCapacity : null;
-    if (ratio !== null && ratio <= 0.05) return 'Sidste billetter';
-    if (ratio !== null && ratio <= 0.20) return 'Få billetter tilbage';
-    return 'Billetter til salg';
-  }
+  // Populated by EventService from the event_ticket_availability view — not a DB column.
+  availabilityLabel?: string | null;
 }

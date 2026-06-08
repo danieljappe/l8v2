@@ -7,7 +7,6 @@ import { useEvents } from '../hooks/useApi';
 import type { Event } from '../services/api';
 import { constructFullUrl } from '../utils/imageUtils';
 import { slugify } from '../utils/slugUtils';
-import { getAvailabilityStatus } from '../utils/ticketAvailability';
 
 interface ProcessedEvent extends Event {
   status: 'upcoming' | 'past';
@@ -349,18 +348,18 @@ const EventList: React.FC = () => {
 
               {/* Ticket Availability Badge - upcoming events only */}
               {event.status === 'upcoming' && (() => {
-                const avail = getAvailabilityStatus(event.billettoData);
-                if (avail === 'sold_out') return (
+                const label = event.billettoData?.availabilityLabel;
+                if (label === 'Udsolgt') return (
                   <div className="mb-4 flex items-center justify-center">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300 border border-red-400/30">
                       Udsolgt
                     </span>
                   </div>
                 );
-                if (avail === 'low') return (
+                if (label === 'Sidste billetter' || label === 'Få billetter tilbage') return (
                   <div className="mb-4 flex items-center justify-center">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                      Få billetter tilbage{event.billettoData?.ticketsAvailable != null ? ` — ${event.billettoData.ticketsAvailable} tilbage` : ''}
+                      {label}{event.billettoData?.ticketsAvailable != null ? ` — ${event.billettoData.ticketsAvailable} tilbage` : ''}
                     </span>
                   </div>
                 );
@@ -369,7 +368,7 @@ const EventList: React.FC = () => {
 
               {/* CTA Button - now just for style, not navigation */}
               <div className="text-center">
-                {event.status === 'upcoming' && getAvailabilityStatus(event.billettoData) === 'sold_out' ? (
+                {event.status === 'upcoming' && event.billettoData?.availabilityLabel === 'Udsolgt' ? (
                   <div className="bg-white/10 text-white/40 font-semibold px-4 py-2 rounded-xl flex items-center justify-center space-x-2 w-full text-sm cursor-not-allowed">
                     <Ticket className="w-4 h-4" />
                     <span>Udsolgt</span>

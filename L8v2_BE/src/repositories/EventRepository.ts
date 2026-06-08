@@ -39,6 +39,24 @@ export class EventRepository extends BaseRepository<Event> {
     return this.repository.findOne({ where: { id }, relations: EVENT_RELATIONS });
   }
 
+  async findAvailabilityLabel(eventId: string): Promise<string | null> {
+    const rows = await this.repository.query(
+      `SELECT "availabilityLabel" FROM event_ticket_availability WHERE "eventId" = $1`,
+      [eventId],
+    );
+    return (rows[0]?.availabilityLabel as string | undefined) ?? null;
+  }
+
+  async findAvailabilityLabels(eventIds: string[]): Promise<Map<string, string | null>> {
+    if (eventIds.length === 0) return new Map();
+    const rows: Array<{ eventId: string; availabilityLabel: string | null }> =
+      await this.repository.query(
+        `SELECT "eventId", "availabilityLabel" FROM event_ticket_availability WHERE "eventId" = ANY($1)`,
+        [eventIds],
+      );
+    return new Map(rows.map(r => [r.eventId, r.availabilityLabel]));
+  }
+
   /**
    * Merges the patch into the existing event, resets the venue relation when a
    * venueId is supplied (so TypeORM writes the new FK instead of the stale

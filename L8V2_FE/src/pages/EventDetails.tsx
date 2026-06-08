@@ -18,7 +18,6 @@ import type { Artist } from '../services/api';
 import type { TimelineItem } from '../types/admin';
 import { constructFullUrl } from '../utils/imageUtils';
 import VenueMapEmbed from '../components/VenueMapEmbed';
-import { getAvailabilityStatus } from '../utils/ticketAvailability';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -101,13 +100,13 @@ const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 interface TicketWidgetProps {
   billettoLink: string;
-  billettoData?: { maxCapacity: number | null; ticketsAvailable: number | null; lastSyncedAt: string };
+  billettoData?: { maxCapacity: number | null; ticketsAvailable: number | null; lastSyncedAt: string; availabilityLabel?: string | null };
   isUpcoming: boolean;
   title: string;
 }
 
 const TicketWidget: React.FC<TicketWidgetProps> = ({ billettoLink, billettoData, isUpcoming, title }) => {
-  const avail = getAvailabilityStatus(billettoData);
+  const label = billettoData?.availabilityLabel ?? null;
   const { ticketsAvailable, maxCapacity } = billettoData ?? {};
 
   return (
@@ -119,13 +118,13 @@ const TicketWidget: React.FC<TicketWidgetProps> = ({ billettoLink, billettoData,
 
         {isUpcoming ? (
           <>
-            {avail === 'sold_out' && (
+            {label === 'Udsolgt' && (
               <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-400/20">
                 <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
                 <span className="text-red-300 text-sm font-medium">Udsolgt</span>
               </div>
             )}
-            {avail === 'low' && ticketsAvailable != null && (
+            {(label === 'Sidste billetter' || label === 'Få billetter tilbage') && ticketsAvailable != null && (
               <div className="mb-4 space-y-2">
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-400/20">
                   <motion.span
@@ -147,14 +146,14 @@ const TicketWidget: React.FC<TicketWidgetProps> = ({ billettoLink, billettoData,
                 )}
               </div>
             )}
-            {avail === 'available' && (
+            {label === 'Billetter til salg' && (
               <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-green-500/10 border border-green-400/20">
                 <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
                 <span className="text-green-300 text-sm font-medium">Billetter tilgængelige</span>
               </div>
             )}
 
-            {avail === 'sold_out' ? (
+            {label === 'Udsolgt' ? (
               <div className="w-full py-3.5 rounded-xl bg-white/5 text-white/30 font-semibold text-sm text-center">
                 Udsolgt
               </div>

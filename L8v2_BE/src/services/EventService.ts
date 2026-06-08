@@ -28,9 +28,19 @@ export class EventService {
   }
 
   async getAllEvents(opts: { upcoming?: boolean; past?: boolean; take?: number } = {}): Promise<Event[]> {
-    if (opts.upcoming) return this.eventRepository.findUpcomingWithRelations(opts.take);
-    if (opts.past) return this.eventRepository.findPastWithRelations(opts.take);
-    return this.eventRepository.findAllWithRelations();
+    let events: Event[];
+    if (opts.upcoming) events = await this.eventRepository.findUpcomingWithRelations(opts.take);
+    else if (opts.past) events = await this.eventRepository.findPastWithRelations(opts.take);
+    else events = await this.eventRepository.findAllWithRelations();
+
+    const eventIds = events.filter(e => e.billettoData).map(e => e.id);
+    const labels = await this.eventRepository.findAvailabilityLabels(eventIds);
+    for (const event of events) {
+      if (event.billettoData) {
+        event.billettoData.availabilityLabel = labels.get(event.id) ?? null;
+      }
+    }
+    return events;
   }
 
   /**
@@ -51,7 +61,13 @@ export class EventService {
 
     if (!event) return null;
 
-    const timeline = await this.timelineRepository.findRunningOrder(event.id);
+    const [timeline, availabilityLabel] = await Promise.all([
+      this.timelineRepository.findRunningOrder(event.id),
+      this.eventRepository.findAvailabilityLabel(event.id),
+    ]);
+    if (event.billettoData) {
+      event.billettoData.availabilityLabel = availabilityLabel;
+    }
     return { ...event, timeline };
   }
 

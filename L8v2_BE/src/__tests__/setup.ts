@@ -90,6 +90,33 @@ beforeAll(async () => {
     LEFT JOIN "artist" a ON a."id" = ea."artistId"
     ORDER BY ti."event_id", ti."position"
   `);
+
+  await AppDataSource.query(`
+    CREATE OR REPLACE VIEW event_ticket_availability AS
+    SELECT
+      e.id                   AS "eventId",
+      e.title,
+      bed."billettoEventId",
+      bed."ticketsAvailable",
+      bed."maxCapacity",
+      bed."publicUrl",
+      bed."lastSyncedAt",
+      CASE
+        WHEN bed."ticketsAvailable" IS NULL
+          THEN NULL
+        WHEN bed."ticketsAvailable" = 0
+          THEN 'Udsolgt'
+        WHEN bed."maxCapacity" IS NOT NULL
+             AND bed."ticketsAvailable"::float / NULLIF(bed."maxCapacity", 0) <= 0.05
+          THEN 'Sidste billetter'
+        WHEN bed."maxCapacity" IS NOT NULL
+             AND bed."ticketsAvailable"::float / NULLIF(bed."maxCapacity", 0) <= 0.20
+          THEN 'Få billetter tilbage'
+        ELSE 'Billetter til salg'
+      END AS "availabilityLabel"
+    FROM "event" e
+    JOIN "billetto_event_data" bed ON bed."eventId" = e.id
+  `);
 });
 
 afterAll(async () => {

@@ -253,6 +253,7 @@ export interface Event {
     maxCapacity: number | null;
     ticketsAvailable: number | null;
     lastSyncedAt: string;
+    availabilityLabel?: string | null;
   };
   timeline?: TimelineItem[];
   createdAt: string;

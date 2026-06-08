@@ -1,6 +1,8 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { createTestApp, createTestUser, getAuthToken, cleanupDatabase } from '../helpers';
+import { AppDataSource } from '../../config/database';
+import { BillettoEventData } from '../../models/BillettoEventData';
 
 const app = createTestApp();
 
@@ -396,5 +398,90 @@ describe('PUT /api/events/:id — venueId handling', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.venue?.id ?? res.body.venueId).toBe(venue.body.id);
+  });
+});
+
+// ─── GET /api/events/:id — availabilityLabel from event_ticket_availability view ─
+
+describe('GET /api/events/:id — billettoData.availabilityLabel boundary values', () => {
+  let token: string;
+  let eventId: string;
+  const billettoRepo = () => AppDataSource.getRepository(BillettoEventData);
+
+  beforeAll(async () => {
+    const { user, plainPassword } = await createTestUser();
+    token = await getAuthToken(app, user.email, plainPassword);
+    const ev = await request(app)
+      .post('/api/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Availability Label Test', description: 'x', date: '2099-01-01', startTime: '20:00' });
+    eventId = ev.body.id as string;
+  });
+
+  afterAll(async () => {
+    await cleanupDatabase();
+  });
+
+  async function seedBillettoData(ticketsAvailable: number | undefined, maxCapacity: number | undefined): Promise<void> {
+    await billettoRepo().delete({ eventId });
+    await billettoRepo().save(
+      billettoRepo().create({
+        billettoEventId: `label-test-${eventId}`,
+        eventId,
+        publicUrl: 'https://billetto.dk/test',
+        ticketsAvailable,
+        maxCapacity,
+        lastSyncedAt: new Date(),
+      }),
+    );
+  }
+
+  it('0 tickets → Udsolgt', async () => {
+    await seedBillettoData(0, 100);
+    const res = await request(app).get(`/api/events/${eventId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.billettoData.availabilityLabel).toBe('Udsolgt');
+  });
+
+  it('4/100 tickets (4 %, just below 5 %) → Sidste billetter', async () => {
+    await seedBillettoData(4, 100);
+    const res = await request(app).get(`/api/events/${eventId}`);
+    expect(res.body.billettoData.availabilityLabel).toBe('Sidste billetter');
+  });
+
+  it('5/100 tickets (exactly 5 %) → Sidste billetter', async () => {
+    await seedBillettoData(5, 100);
+    const res = await request(app).get(`/api/events/${eventId}`);
+    expect(res.body.billettoData.availabilityLabel).toBe('Sidste billetter');
+  });
+
+  it('6/100 tickets (6 %, just above 5 %) → Få billetter tilbage', async () => {
+    await seedBillettoData(6, 100);
+    const res = await request(app).get(`/api/events/${eventId}`);
+    expect(res.body.billettoData.availabilityLabel).toBe('Få billetter tilbage');
+  });
+
+  it('20/100 tickets (exactly 20 %) → Få billetter tilbage', async () => {
+    await seedBillettoData(20, 100);
+    const res = await request(app).get(`/api/events/${eventId}`);
+    expect(res.body.billettoData.availabilityLabel).toBe('Få billetter tilbage');
+  });
+
+  it('21/100 tickets (21 %, just above 20 %) → Billetter til salg', async () => {
+    await seedBillettoData(21, 100);
+    const res = await request(app).get(`/api/events/${eventId}`);
+    expect(res.body.billettoData.availabilityLabel).toBe('Billetter til salg');
+  });
+
+  it('50 tickets with no maxCapacity → Billetter til salg', async () => {
+    await seedBillettoData(50, undefined);
+    const res = await request(app).get(`/api/events/${eventId}`);
+    expect(res.body.billettoData.availabilityLabel).toBe('Billetter til salg');
+  });
+
+  it('null ticketsAvailable → availabilityLabel is null', async () => {
+    await seedBillettoData(undefined, 100);
+    const res = await request(app).get(`/api/events/${eventId}`);
+    expect(res.body.billettoData.availabilityLabel).toBeNull();
   });
 });

@@ -7,7 +7,6 @@ import LoadingSpinner from './LoadingSpinner';
 import { useUpcomingEvents } from '../hooks/useApi';
 import type { Artist } from '../services/api';
 import { slugify } from '../utils/slugUtils';
-import { getAvailabilityStatus } from '../utils/ticketAvailability';
 
 const UpcomingEvent: React.FC = () => {
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
@@ -108,8 +107,7 @@ const UpcomingEvent: React.FC = () => {
       <motion.div
         variants={containerVariants}
         initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.3 }}
+        animate="visible"
         className="container mx-auto max-w-4xl"
       >
         <motion.div 
@@ -230,8 +228,8 @@ const UpcomingEvent: React.FC = () => {
             {/* CTA Button */}
             <motion.div variants={itemVariants} className="text-center">
               {(() => {
-                const avail = getAvailabilityStatus(upcomingEvent.billettoData);
-                if (avail === 'sold_out') return (
+                const label = upcomingEvent.billettoData?.availabilityLabel;
+                if (label === 'Udsolgt') return (
                   <div className="flex flex-col items-center gap-2">
                     <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-red-500/20 text-red-300 border border-red-400/30">
                       Udsolgt
@@ -240,9 +238,9 @@ const UpcomingEvent: React.FC = () => {
                 );
                 return (
                   <div className="flex flex-col items-center gap-3">
-                    {avail === 'low' && (
+                    {(label === 'Sidste billetter' || label === 'Få billetter tilbage') && (
                       <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                        Få billetter tilbage{upcomingEvent.billettoData?.ticketsAvailable != null ? ` — ${upcomingEvent.billettoData.ticketsAvailable} tilbage` : ''}
+                        {label}{upcomingEvent.billettoData?.ticketsAvailable != null ? ` — ${upcomingEvent.billettoData.ticketsAvailable} tilbage` : ''}
                       </span>
                     )}
                     <motion.button
