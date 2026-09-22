@@ -34,9 +34,9 @@ const RAMP_END = 0.8;
  * the frame rather than filling it — the hero reads as a scene with the logo
  * in it, not as a logo with a canvas around it.
  */
-const FILL = 0.585;
-/** atan(TILT_REACH / TILT_DEPTH) is the tilt at a screen corner — ~10°. */
-const TILT_REACH = 1.05;
+const FILL = 0.702;
+/** atan(TILT_REACH / TILT_DEPTH) is the tilt at a screen corner — ~18°. */
+const TILT_REACH = 1.9;
 const TILT_DEPTH = 6;
 /**
  * Exponential follow rate, per second. Deliberately languid: the logo drifts
@@ -217,12 +217,15 @@ const Hero3DLogoScene: React.FC<{ active: boolean }> = ({ active }) => {
 
   // `flat` = no ACES tone mapping: the logo is flat brand colour, not a
   // photographic subject, and ACES washes the cream and cyan toward white.
+  // The wide fov is deliberate: the logo is auto-fitted to the canvas, so it
+  // does not change apparent size, but the stronger foreshortening is what
+  // makes the tilt legible at this small a size.
   return (
     <Canvas
       frameloop={active ? 'demand' : 'never'}
       flat
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0, 6], fov: 35, near: 0.1, far: 50 }}
+      camera={{ position: [0, 0, 6], fov: 48, near: 0.1, far: 50 }}
       gl={{ alpha: true, antialias: true, powerPreference: 'default' }}
       style={{ pointerEvents: 'none' }}
     >
@@ -230,8 +233,12 @@ const Hero3DLogoScene: React.FC<{ active: boolean }> = ({ active }) => {
       <ResumeOnActive active={active} />
       {active && <PointerTracker pointer={pointer} />}
 
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[2.5, 3.5, 4]} intensity={1.1} />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[2.5, 3.5, 4]} intensity={1.0} />
+      {/* Fill from the opposite corner. Without it the face grazes the key
+          light when the cursor is low and left, and the brand gradient greys
+          out at exactly the tilt that shows off the depth best. */}
+      <directionalLight position={[-3, -2.5, 4]} intensity={0.45} />
 
       {/* Baked once into a 64px cubemap — no HDR fetched from a CDN. The
           panels sit behind the camera, which is what a face pointing at the
