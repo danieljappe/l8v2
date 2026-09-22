@@ -34,7 +34,7 @@ const RAMP_END = 0.8;
  * the frame rather than filling it — the hero reads as a scene with the logo
  * in it, not as a logo with a canvas around it.
  */
-const FILL = 0.78;
+const FILL = 0.585;
 /** atan(TILT_REACH / TILT_DEPTH) is the tilt at a screen corner — ~10°. */
 const TILT_REACH = 1.05;
 const TILT_DEPTH = 6;
