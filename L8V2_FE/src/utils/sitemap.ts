@@ -1,3 +1,5 @@
+import { BOOKING_ENABLED } from '../config/features';
+
 interface SitemapEntry {
   url: string;
   lastmod?: string;
@@ -33,15 +35,17 @@ export const generateSitemap = (entries: SitemapEntry[]): string => {
 };
 
 export const getStaticPages = (): SitemapEntry[] => [
-  {
+  // With Booking off, / is a redirect to /home rather than its own page, so
+  // listing both would advertise duplicate content.
+  ...(BOOKING_ENABLED ? [{
     url: '/',
-    changefreq: 'weekly',
+    changefreq: 'weekly' as const,
     priority: 1.0
-  },
+  }] : []),
   {
     url: '/home',
     changefreq: 'weekly',
-    priority: 0.9
+    priority: BOOKING_ENABLED ? 0.9 : 1.0
   },
   {
     url: '/events',
@@ -58,21 +62,21 @@ export const getStaticPages = (): SitemapEntry[] => [
     changefreq: 'weekly',
     priority: 0.7
   },
-  {
+  ...(BOOKING_ENABLED ? [{
     url: '/booking',
-    changefreq: 'weekly',
+    changefreq: 'weekly' as const,
     priority: 0.9
   },
   {
     url: '/booking/artists',
-    changefreq: 'monthly',
+    changefreq: 'monthly' as const,
     priority: 0.7
   },
   {
     url: '/booking/contact',
-    changefreq: 'monthly',
+    changefreq: 'monthly' as const,
     priority: 0.6
-  },
+  }] : []),
   {
     url: '/about',
     changefreq: 'monthly',
@@ -118,15 +122,17 @@ export const addDynamicPages = (events: { title: string; updatedAt?: string }[],
   });
 
   // Add artist pages for booking platform
-  artists.forEach(artist => {
-    const slug = artist.name.toLowerCase().replace(/\s+/g, '-');
-    dynamicPages.push({
-      url: `/booking/artists/${slug}`,
-      lastmod: artist.updatedAt ? new Date(artist.updatedAt).toISOString().split('T')[0] : undefined,
-      changefreq: 'monthly',
-      priority: 0.7
+  if (BOOKING_ENABLED) {
+    artists.forEach(artist => {
+      const slug = artist.name.toLowerCase().replace(/\s+/g, '-');
+      dynamicPages.push({
+        url: `/booking/artists/${slug}`,
+        lastmod: artist.updatedAt ? new Date(artist.updatedAt).toISOString().split('T')[0] : undefined,
+        changefreq: 'monthly',
+        priority: 0.7
+      });
     });
-  });
+  }
 
   return dynamicPages;
 };

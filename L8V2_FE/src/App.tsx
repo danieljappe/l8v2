@@ -20,6 +20,7 @@ import CookieSettingsButton from './components/CookieSettingsButton';
 import CookieConsentBanner from './components/CookieConsentBanner';
 import GoogleAnalyticsLoader from './components/GoogleAnalyticsLoader';
 import { AuthProvider } from './contexts/AuthContext';
+import { BOOKING_ENABLED } from './config/features';
 
 function CookieSettingsButtonGuard() {
   const { pathname } = useLocation();
@@ -45,7 +46,7 @@ const AppContent = () => {
   const location = useLocation();
   const isAdminPage = location.pathname === '/admin';
   const isLoginPage = location.pathname === '/login';
-  const isBookingPage = location.pathname.startsWith('/booking');
+  const isBookingPage = BOOKING_ENABLED && location.pathname.startsWith('/booking');
 
   return (
     <div className="relative min-h-screen">
@@ -60,7 +61,14 @@ const AppContent = () => {
         {!isAdminPage && !isLoginPage && <Header />}
         <main>
           <Routes>
-            <Route path="/" element={<Home />} />
+            {/* With Booking on, / is the platform-choice screen (PlatformRouter
+                intercepts before these routes). With it off there is nothing to
+                choose, so / redirects to the canonical home rather than
+                rendering Home at two URLs. */}
+            <Route
+              path="/"
+              element={BOOKING_ENABLED ? <Home /> : <Navigate to="/home" replace />}
+            />
             <Route path="/home" element={<Home />} />
             <Route path="/events" element={<Events />} />
             <Route path="/events/:eventName" element={<EventDetails />} />
@@ -68,11 +76,20 @@ const AppContent = () => {
             <Route path="/about" element={<AboutUs />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/artists" element={<Artists />} />
-            <Route path="/booking" element={<BookingHome />} />
-            <Route path="/booking/artists" element={<BookingArtists />} />
-            <Route path="/booking/artists/:artistName" element={<ArtistPage />} />
-            <Route path="/booking/about" element={<BookingAbout />} />
-            <Route path="/booking/contact" element={<Contact />} />
+            {BOOKING_ENABLED && (
+              <>
+                <Route path="/booking" element={<BookingHome />} />
+                <Route path="/booking/artists" element={<BookingArtists />} />
+                <Route path="/booking/artists/:artistName" element={<ArtistPage />} />
+                <Route path="/booking/about" element={<BookingAbout />} />
+                <Route path="/booking/contact" element={<Contact />} />
+              </>
+            )}
+            {/* Keep previously-shared and still-indexed booking links alive
+                instead of dropping them onto a blank page. */}
+            {!BOOKING_ENABLED && (
+              <Route path="/booking/*" element={<Navigate to="/home" replace />} />
+            )}
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<PrivateRoute><Admin /></PrivateRoute>} />
           </Routes>

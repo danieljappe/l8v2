@@ -18,6 +18,7 @@ import SocialMediaSection from '../components/SocialMediaSection';
 import { useSEO } from '../hooks/useSEO';
 import { StructuredData, createOrganizationSchema, createWebSiteSchema } from '../components/StructuredData';
 import { useStats, useUpcomingEvents } from '../hooks/useApi';
+import { BOOKING_ENABLED } from '../config/features';
 
 // ─── Scroll-triggered fade-up wrapper ────────────────────────────────────────
 const FadeUp: React.FC<{ children: React.ReactNode; delay?: number; className?: string }> = ({
@@ -433,16 +434,18 @@ const PinnedShowcase: React.FC = () => {
                 <p className="text-white/50 text-sm sm:text-base leading-relaxed max-w-sm mb-6">
                   Book spirrende danske artister til dit næste event. Vi forbinder dig direkte med vækstlagets stemmer.
                 </p>
-                <motion.button
-                  onClick={() => navigate('/booking')}
-                  whileHover={{ x: 4 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                  className="inline-flex items-center gap-2 self-start px-5 py-2.5 rounded-full
-                    border border-l8-beige/30 bg-l8-beige/10 text-l8-beige text-sm
-                    hover:bg-l8-beige/20 transition-colors"
-                >
-                  Book Kunstnere <ArrowRight className="w-3.5 h-3.5" />
-                </motion.button>
+                {BOOKING_ENABLED && (
+                  <motion.button
+                    onClick={() => navigate('/booking')}
+                    whileHover={{ x: 4 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    className="inline-flex items-center gap-2 self-start px-5 py-2.5 rounded-full
+                      border border-l8-beige/30 bg-l8-beige/10 text-l8-beige text-sm
+                      hover:bg-l8-beige/20 transition-colors"
+                  >
+                    Book Kunstnere <ArrowRight className="w-3.5 h-3.5" />
+                  </motion.button>
+                )}
               </motion.div>
 
               {/* Slide 3 — Om Os */}
@@ -635,7 +638,9 @@ const Home: React.FC = () => {
       'L8 Events kuraterer events med fokus på den nye bølge af dansk musik. Book spirrende artister, deltag i vores begivenheder, og oplev uforglemmelige musikkopplevelser. Vi fungerer som bindeled mellem nye talenter og etablerede spillesteder.',
     keywords:
       'L8 Events, dansk musik, elektronisk musik, event booking, kunstnere booking, musikkopplevelser, vækstlaget musik, DJ events, musik events Danmark, event management, booking service',
-    url: '/',
+    // /home, not /: the root is either a redirect (Booking off) or the
+    // platform-choice screen (Booking on), so it is never this page's canonical.
+    url: '/home',
   });
 
   return (
@@ -734,15 +739,17 @@ const Home: React.FC = () => {
               Udforsk Events <ArrowRight className="w-4 h-4" />
             </motion.button>
 
-            <motion.button
-              whileHover={{ scale: 1.06, backgroundColor: 'rgba(255,255,255,0.06)' }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => navigate('/booking')}
-              className="flex items-center gap-3 px-8 py-3.5 border border-white/20
-                text-white/75 font-medium rounded-full text-sm tracking-wide transition-colors"
-            >
-              Book Kunstnere
-            </motion.button>
+            {BOOKING_ENABLED && (
+              <motion.button
+                whileHover={{ scale: 1.06, backgroundColor: 'rgba(255,255,255,0.06)' }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => navigate('/booking')}
+                className="flex items-center gap-3 px-8 py-3.5 border border-white/20
+                  text-white/75 font-medium rounded-full text-sm tracking-wide transition-colors"
+              >
+                Book Kunstnere
+              </motion.button>
+            )}
           </motion.div>
         </motion.div>
 
@@ -809,7 +816,9 @@ const Home: React.FC = () => {
           </FadeUp>
 
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            className={`grid grid-cols-1 gap-6 ${
+              BOOKING_ENABLED ? 'md:grid-cols-3' : 'md:grid-cols-2'
+            }`}
             initial="hidden"
             animate={navCardsReady ? 'visible' : undefined}
             whileInView="visible"
@@ -827,7 +836,7 @@ const Home: React.FC = () => {
                 cta:   'Udforsk Begivenheder',
                 route: '/events',
               },
-              {
+              ...(BOOKING_ENABLED ? [{
                 icon: Users,
                 iconColor: 'text-l8-beige',   iconBg: 'bg-l8-beige/10',
                 accentColor: 'text-l8-beige',  borderColor: 'border-l8-beige/15',
@@ -836,7 +845,7 @@ const Home: React.FC = () => {
                 desc:  'Book talentfulde artister til dine events og skab uforglemmelige oplevelser.',
                 cta:   'Book Kunstnere',
                 route: '/booking',
-              },
+              }] : []),
               {
                 icon: Info,
                 iconColor: 'text-white/65',   iconBg: 'bg-white/10',

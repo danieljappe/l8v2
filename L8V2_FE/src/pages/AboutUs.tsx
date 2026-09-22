@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useEvents, useUsers } from '../hooks/useApi';
 import { useSEO } from '../hooks/useSEO';
+import { BOOKING_ENABLED } from '../config/features';
 
 const useCountAnimation = (end: number, duration = 2) => {
   const count = useMotionValue(0);
@@ -250,7 +251,7 @@ const AboutUs = () => {
           transition={{ delay: 0.3 }}
           className="text-xl text-l8-beige max-w-3xl mx-auto"
         >
-          L8 kuraterer events med fokus på den nye bølge af dansk musik. Vi arbejder for at løfte og showcase artister i vækstlaget – og fungerer som bindeled mellem de nye talenter og de etablerede spillesteder. Siden vores første event i marts 2024 er vi vokset fra et lille festlokale i Sydhavnen til en scene på Distortion - og alt der i mellem. <br></br> Udforsk vores <Link to="/events" className="text-l8-blue hover:text-l8-blue-light transition-colors underline">kommende events</Link> eller <Link to="/booking" className="text-l8-blue hover:text-l8-blue-light transition-colors underline">book kunstnere</Link> til dit event.
+          L8 kuraterer events med fokus på den nye bølge af dansk musik. Vi arbejder for at løfte og showcase artister i vækstlaget – og fungerer som bindeled mellem de nye talenter og de etablerede spillesteder. Siden vores første event i marts 2024 er vi vokset fra et lille festlokale i Sydhavnen til en scene på Distortion - og alt der i mellem. <br></br> Udforsk vores <Link to="/events" className="text-l8-blue hover:text-l8-blue-light transition-colors underline">kommende events</Link>{BOOKING_ENABLED ? (<> eller <Link to="/booking" className="text-l8-blue hover:text-l8-blue-light transition-colors underline">book kunstnere</Link> til dit event.</>) : '.'}
         </motion.p>
       </motion.div>
 

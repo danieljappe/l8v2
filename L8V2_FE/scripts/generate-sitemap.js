@@ -8,6 +8,11 @@ const __dirname = path.dirname(__filename);
 // API Base URL - adjust this based on your backend deployment
 const API_BASE_URL = process.env.VITE_API_URL || 'https://l8events.dk/api';
 
+// Mirrors src/config/features.ts. This script runs under plain Node, which does
+// not load .env files the way Vite does — export the variable in the shell or
+// CI when building with Booking enabled.
+const BOOKING_ENABLED = process.env.VITE_BOOKING_ENABLED === 'true';
+
 // Slugify function to convert event titles to URL-friendly slugs
 function slugify(text) {
   if (!text) return '';
@@ -147,15 +152,17 @@ const generateSitemap = async () => {
   
   // Static pages
   const staticPages = [
-    {
+    // With Booking off, / is a redirect to /home rather than its own page, so
+    // listing both would advertise duplicate content.
+    ...(BOOKING_ENABLED ? [{
       url: '/',
       changefreq: 'weekly',
       priority: 1.0
-    },
+    }] : []),
     {
       url: '/home',
       changefreq: 'weekly',
-      priority: 0.9
+      priority: BOOKING_ENABLED ? 0.9 : 1.0
     },
     {
       url: '/events',
@@ -172,7 +179,7 @@ const generateSitemap = async () => {
       changefreq: 'weekly',
       priority: 0.7
     },
-    {
+    ...(BOOKING_ENABLED ? [{
       url: '/booking',
       changefreq: 'monthly',
       priority: 0.8
@@ -186,7 +193,7 @@ const generateSitemap = async () => {
       url: '/booking/contact',
       changefreq: 'monthly',
       priority: 0.6
-    },
+    }] : []),
     {
       url: '/about',
       changefreq: 'monthly',
@@ -248,7 +255,9 @@ const generateSitemap = async () => {
   }));
 
   // Add dynamic artist pages (for booking platform) - only include bookable artists
-  const bookableArtists = artists.filter(artist => artist.isBookable === true);
+  const bookableArtists = BOOKING_ENABLED
+    ? artists.filter(artist => artist.isBookable === true)
+    : [];
   const artistPages = bookableArtists.map(artist => {
     const slug = artist.name.toLowerCase().replace(/\s+/g, '-');
     return {

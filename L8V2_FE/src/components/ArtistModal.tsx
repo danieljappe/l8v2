@@ -7,6 +7,7 @@ import type { Artist } from '../services/api';
 import EmbeddingManager from './EmbeddingManager';
 import EmbedRenderer from './EmbedRenderer';
 import { normalizeSocialMedia } from '../utils/socialMediaUtils';
+import { BOOKING_ENABLED } from '../config/features';
 
 interface ArtistModalProps {
   artist: Artist | null;
@@ -193,7 +194,9 @@ const ArtistModal: React.FC<ArtistModalProps> = ({ artist, onClose, isAdmin = fa
                   </span>
                 )}
 
-                {artist.isBookable && (
+                {/* The profile lives on the Booking platform — without it the
+                    link would only bounce the visitor back to /home. */}
+                {BOOKING_ENABLED && artist.isBookable && (
                   <Link
                     to={`/booking/artists/${getArtistUrl(artist.name)}`}
                     onClick={onClose}
