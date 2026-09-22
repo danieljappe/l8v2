@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { shouldShowPlatformChoice } from '../utils/subdomainUtils';
 import PlatformChoice from './PlatformChoice';
+import { BOOKING_ENABLED } from '../config/features';
 
 interface PlatformRouterProps {
   children: React.ReactNode;
@@ -10,7 +11,10 @@ interface PlatformRouterProps {
 const PlatformRouter: React.FC<PlatformRouterProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isChecking, setIsChecking] = useState(true);
+  // There is nothing to check when Booking is off, and the effect that clears
+  // this only runs after the first paint — starting at `true` would flash the
+  // "Loading platform..." screen on every cold load.
+  const [isChecking, setIsChecking] = useState(BOOKING_ENABLED);
 
   useEffect(() => {
     const checkPlatform = () => {

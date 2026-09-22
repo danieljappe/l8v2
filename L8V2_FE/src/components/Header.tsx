@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getPlatformFromPath } from '../utils/subdomainUtils';
 import { StructuredData } from './StructuredData';
 import { createSiteNavigationSchema, createWebSiteSchema } from './StructuredData';
+import { BOOKING_ENABLED } from '../config/features';
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -105,20 +106,23 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between h-20">
           {/* Logo and Platform Switch */}
           <div className="flex items-center space-x-3">
-            {/* Platform Switch Icon */}
-            <motion.button
-              onClick={handlePlatformSwitch}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl transition-colors duration-200 text-white/80 hover:text-white"
-              title={`Switch to ${getPlatformFromPath() === 'booking' ? 'Events' : 'Booking'}`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-            </motion.button>
+            {/* Platform Switch Icon — only meaningful with two platforms */}
+            {BOOKING_ENABLED && (
+              <motion.button
+                onClick={handlePlatformSwitch}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl transition-colors duration-200 text-white/80 hover:text-white"
+                title={`Switch to ${getPlatformFromPath() === 'booking' ? 'Events' : 'Booking'}`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </motion.button>
+            )}
 
-            <Link to={getPlatformFromPath() === 'booking' ? '/booking' : '/'}>
+            {/* With Booking off, / only redirects to /home — link straight there. */}
+            <Link to={getPlatformFromPath() === 'booking' ? '/booking' : BOOKING_ENABLED ? '/' : '/home'}>
               <div className="flex items-center space-x-2">
                 <img 
                   src="/l8logo.png" 
@@ -246,7 +250,8 @@ const Header: React.FC = () => {
                       );
                     })}
                     
-                    {/* Platform Switch Button */}
+                    {/* Platform Switch Button — only meaningful with two platforms */}
+                    {BOOKING_ENABLED && (
                     <div className="border-t border-white/20 pt-4">
                       <motion.button
                         whileHover={{ scale: 1.02 }}
@@ -265,6 +270,7 @@ const Header: React.FC = () => {
                         </span>
                       </motion.button>
                     </div>
+                    )}
                   </div>
                 </nav>
 

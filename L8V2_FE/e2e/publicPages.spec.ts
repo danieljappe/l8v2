@@ -12,23 +12,37 @@ test.beforeEach(async ({ page }) => {
 // EQ class covered: "valid route" — each page belongs to the partition of routes
 // that should render successfully without authentication.
 
+// `/` is not a page in its own right: with Booking disabled it redirects to
+// /home, and with Booking enabled it is the platform-choice screen. So assert
+// where each path is expected to *land* rather than assuming it stays put.
 const publicRoutes = [
-  { path: '/', name: 'Home' },
-  { path: '/events', name: 'Events' },
-  { path: '/gallery', name: 'Gallery' },
-  { path: '/about', name: 'About' },
-  { path: '/contact', name: 'Contact' },
-  { path: '/artists', name: 'Artists' },
+  { path: '/', landsOn: '/home', name: 'Home' },
+  { path: '/events', landsOn: '/events', name: 'Events' },
+  { path: '/gallery', landsOn: '/gallery', name: 'Gallery' },
+  { path: '/about', landsOn: '/about', name: 'About' },
+  { path: '/contact', landsOn: '/contact', name: 'Contact' },
+  { path: '/artists', landsOn: '/artists', name: 'Artists' },
 ];
 
-for (const { path, name } of publicRoutes) {
+for (const { path, landsOn, name } of publicRoutes) {
   test(`${name} page (${path}) renders without an error boundary`, async ({ page }) => {
     await page.goto(path);
-    await expect(page).toHaveURL(new RegExp(path === '/' ? '^http://localhost:5173/?$' : path));
+    await expect(page).toHaveURL(new RegExp(`${landsOn}$`));
     await expect(page.locator('body')).not.toContainText('Something went wrong');
     await expect(page.locator('body')).not.toContainText('Cannot read properties');
   });
 }
+
+// ─── Booking feature flag ─────────────────────────────────────────────────────
+//
+// Booking ships disabled (VITE_BOOKING_ENABLED unset). Previously-shared and
+// still-indexed /booking links must land on /home rather than a blank page.
+
+test('booking links redirect to /home while the Booking flag is off', async ({ page }) => {
+  await page.goto('/booking/artists');
+  await expect(page).toHaveURL(/\/home$/);
+  await expect(page.locator('body')).not.toContainText('Something went wrong');
+});
 
 // ─── Home page — stats section renders numeric values ────────────────────────
 

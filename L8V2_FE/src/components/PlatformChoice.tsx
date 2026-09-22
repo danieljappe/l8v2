@@ -2,6 +2,7 @@ import React, { useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { BOOKING_ENABLED } from '../config/features';
 
 // Lazy — Three.js (~600 kB) is never fetched or parsed on the mobile path
 // because <Scene> is only rendered when useDesktopScene is true.
@@ -56,7 +57,7 @@ const PlatformChoice: React.FC = () => {
     localStorage.setItem('l8-platform-choice', platform);
     if (platform === 'events') {
       void navigate('/home');
-    } else if (platform === 'booking') {
+    } else if (platform === 'booking' && BOOKING_ENABLED) {
       void navigate('/booking');
     }
   };
@@ -94,27 +95,40 @@ const PlatformChoice: React.FC = () => {
           animate={{ x: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
         >
-          <div
-            className="absolute inset-0 bg-gradient-to-br from-l8-dark/50 to-l8-blue-dark/50 backdrop-blur-sm hidden md:block"
-            style={{
-              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 100%)',
-              maskImage: 'radial-gradient(ellipse 140px 160px at 100% 50%, transparent 140px, black 140px)',
-              WebkitMaskImage: 'radial-gradient(ellipse 140px 160px at 100% 50%, transparent 140px, black 140px)'
-            }}
-          />
-          <div
-            className="absolute inset-0 bg-black/10 hidden md:block"
-            style={{
-              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 100%)',
-              maskImage: 'radial-gradient(ellipse 140px 160px at 100% 50%, transparent 140px, black 140px)',
-              WebkitMaskImage: 'radial-gradient(ellipse 140px 160px at 100% 50%, transparent 140px, black 140px)'
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-l8-dark/50 to-l8-blue-dark/50 backdrop-blur-sm md:hidden" />
-          <div className="absolute inset-0 bg-black/10 md:hidden" />
+          {/* The masks carve out the circular divider between the two halves.
+              With Booking off there is no divider, so the plain full-cover
+              overlays are used at every breakpoint instead. */}
+          {BOOKING_ENABLED ? (
+            <>
+              <div
+                className="absolute inset-0 bg-gradient-to-br from-l8-dark/50 to-l8-blue-dark/50 backdrop-blur-sm hidden md:block"
+                style={{
+                  clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 100%)',
+                  maskImage: 'radial-gradient(ellipse 140px 160px at 100% 50%, transparent 140px, black 140px)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 140px 160px at 100% 50%, transparent 140px, black 140px)'
+                }}
+              />
+              <div
+                className="absolute inset-0 bg-black/10 hidden md:block"
+                style={{
+                  clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 100%)',
+                  maskImage: 'radial-gradient(ellipse 140px 160px at 100% 50%, transparent 140px, black 140px)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 140px 160px at 100% 50%, transparent 140px, black 140px)'
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-l8-dark/50 to-l8-blue-dark/50 backdrop-blur-sm md:hidden" />
+              <div className="absolute inset-0 bg-black/10 md:hidden" />
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-br from-l8-dark/50 to-l8-blue-dark/50 backdrop-blur-sm" />
+              <div className="absolute inset-0 bg-black/10" />
+            </>
+          )}
         </motion.div>
 
         {/* Right Side - Booking */}
+        {BOOKING_ENABLED && (
         <motion.div
           className="flex-1 relative"
           initial={{ x: '100%' }}
@@ -140,6 +154,7 @@ const PlatformChoice: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-booking-dark/50 to-booking-dark/70 backdrop-blur-sm md:hidden" />
           <div className="absolute inset-0 bg-black/10 md:hidden" />
         </motion.div>
+        )}
       </div>
 
       {/* Content — always rendered immediately on mount.
@@ -195,6 +210,7 @@ const PlatformChoice: React.FC = () => {
         </motion.div>
 
         {/* Right Side - Booking */}
+        {BOOKING_ENABLED && (
         <motion.div
           className="flex-1 flex items-center justify-center relative group cursor-pointer min-h-[50vh] md:min-h-full"
           onClick={() => handlePlatformChoice('booking')}
@@ -237,6 +253,7 @@ const PlatformChoice: React.FC = () => {
             </motion.div>
           </div>
         </motion.div>
+        )}
       </motion.div>
     </div>
   );
