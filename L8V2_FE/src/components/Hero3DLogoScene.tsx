@@ -29,15 +29,29 @@ const CYAN = '#00c0ff';
 const RAMP_START = 0.18;
 const RAMP_END = 0.8;
 
-/** Share of the canvas height the logo spans, leaving room for the tilt. */
-const FILL = 0.95;
-/** atan(TILT_REACH / TILT_DEPTH) is the tilt at a screen corner — ~20°. */
-const TILT_REACH = 2.2;
+/**
+ * Share of the canvas height the logo spans. Well under 1 so it sits back in
+ * the frame rather than filling it — the hero reads as a scene with the logo
+ * in it, not as a logo with a canvas around it.
+ */
+const FILL = 0.78;
+/** atan(TILT_REACH / TILT_DEPTH) is the tilt at a screen corner — ~10°. */
+const TILT_REACH = 1.05;
 const TILT_DEPTH = 6;
-/** Per-frame easing toward the cursor. */
-const SLERP = 0.085;
+/**
+ * Exponential follow rate, per second. Deliberately languid: the logo drifts
+ * after the cursor rather than tracking it. Time-based rather than a fixed
+ * fraction per frame, so a 120 Hz display does not get twice the speed.
+ */
+const FOLLOW_RATE = 2.4;
+/**
+ * Frame gaps are unbounded under frameloop="demand" — the clock keeps running
+ * while nothing renders. Clamp, or the first frame after a pause eases across
+ * the whole gap at once and snaps.
+ */
+const MAX_DELTA = 1 / 30;
 /** Below this angular error the tilt is visually settled — stop asking for frames. */
-const SETTLED = 0.0015;
+const SETTLED = 0.003;
 /** The model's own facing axis, turned toward the cursor. */
 const FORWARD = new THREE.Vector3(0, 0, 1);
 
@@ -176,7 +190,7 @@ function Logo({ pointer }: { pointer: React.MutableRefObject<THREE.Vector2> }) {
   const direction = useMemo(() => new THREE.Vector3(), []);
   const desired = useMemo(() => new THREE.Quaternion(), []);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const group = tiltRef.current;
     if (!group) return;
 
@@ -184,7 +198,7 @@ function Logo({ pointer }: { pointer: React.MutableRefObject<THREE.Vector2> }) {
     const y = THREE.MathUtils.clamp(pointer.current.y, -1, 1);
     direction.set(x * TILT_REACH, y * TILT_REACH, TILT_DEPTH).normalize();
     desired.setFromUnitVectors(FORWARD, direction);
-    group.quaternion.slerp(desired, SLERP);
+    group.quaternion.slerp(desired, 1 - Math.exp(-FOLLOW_RATE * Math.min(delta, MAX_DELTA)));
 
     if (group.quaternion.angleTo(desired) > SETTLED) invalidate();
   });
