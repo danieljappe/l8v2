@@ -15,6 +15,7 @@ import { slugify } from '../utils/slugUtils';
 import UpcomingEvent from '../components/UpcomingEvent';
 import PreviousEventGallery from '../components/PreviousEventGallery';
 import SocialMediaSection from '../components/SocialMediaSection';
+import Hero3DLogo from '../components/Hero3DLogo';
 import { useSEO } from '../hooks/useSEO';
 import { StructuredData, createOrganizationSchema, createWebSiteSchema } from '../components/StructuredData';
 import { useStats, useUpcomingEvents } from '../hooks/useApi';
@@ -702,15 +703,8 @@ const Home: React.FC = () => {
             Events Platform
           </motion.div>
 
-          {/* Logo */}
-          <motion.img
-            src="/l8logo_nobackground.webp"
-            alt="L8 Events"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.05, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="w-40 sm:w-52 md:w-64 mx-auto mb-8"
-          />
+          {/* Logo — interactive 3D on desktop, flat webp everywhere else */}
+          <Hero3DLogo />
 
           {/* Tagline */}
           <motion.p
