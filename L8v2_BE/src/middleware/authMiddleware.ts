@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppDataSource } from '../config/database';
+import { JWT_SECRET } from '../config/env';
 
 export interface JwtUser {
   id: string;
@@ -19,8 +20,7 @@ export const authenticateJWT = async (req: AuthRequest, res: Response, next: Nex
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
     try {
-      const secret = process.env.JWT_SECRET || 'changeme';
-      req.user = jwt.verify(token, secret) as JwtUser;
+      req.user = jwt.verify(token, JWT_SECRET) as JwtUser;
       // Make the authenticated user's ID available to DB-layer audit triggers
       // via the app.current_user_id session variable (read by log_change()).
       try {

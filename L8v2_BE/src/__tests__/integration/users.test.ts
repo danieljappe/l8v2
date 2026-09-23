@@ -11,13 +11,82 @@ async function seedUserWithAuth() {
   return { user, token, plainPassword };
 }
 
+/** Fails if a `password` key appears anywhere in the payload, at any depth. */
+function expectNoPassword(payload: unknown, path = 'body'): void {
+  if (Array.isArray(payload)) {
+    payload.forEach((item, i) => expectNoPassword(item, `${path}[${i}]`));
+    return;
+  }
+  if (payload && typeof payload === 'object') {
+    for (const [key, value] of Object.entries(payload)) {
+      if (key === 'password') {
+        throw new Error(`Password hash leaked at ${path}.${key}`);
+      }
+      expectNoPassword(value, `${path}.${key}`);
+    }
+  }
+}
+
 // ─── GET /api/users ───────────────────────────────────────────────────────────
 
 describe('GET /api/users', () => {
-  it('returns 200 with an array', async () => {
+  afterEach(async () => {
+    await cleanupDatabase();
+  });
+
+  it('returns 401 without an auth token', async () => {
     const res = await request(app).get('/api/users');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 200 with an array for an authenticated caller', async () => {
+    const { token } = await seedUserWithAuth();
+    const res = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('never exposes the password hash', async () => {
+    const { token } = await seedUserWithAuth();
+    const res = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.body.length).toBeGreaterThan(0);
+    expectNoPassword(res.body);
+  });
+});
+
+// ─── GET /api/users/team ──────────────────────────────────────────────────────
+
+describe('GET /api/users/team', () => {
+  afterEach(async () => {
+    await cleanupDatabase();
+  });
+
+  it('is public and does not require a token', async () => {
+    await createTestUser();
+    const res = await request(app).get('/api/users/team');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThan(0);
+  });
+
+  it('exposes only the public projection', async () => {
+    await createTestUser();
+    const res = await request(app).get('/api/users/team');
+
+    expect(Object.keys(res.body[0]).sort()).toEqual(
+      ['email', 'firstName', 'id', 'imageUrl', 'lastName', 'phoneNumber', 'role'].sort()
+    );
+    expectNoPassword(res.body);
+  });
+
+  it('is not shadowed by the /:id route', async () => {
+    const res = await request(app).get('/api/users/team');
+    // If Express matched /:id with id="team" this would be a 404 or a 401.
+    expect(res.status).toBe(200);
   });
 });
 
@@ -54,6 +123,8 @@ describe('POST /api/users', () => {
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('id');
     expect(res.body.firstName).toBe('Created');
+    // Built in memory, so select:false does not cover it — the DTO must.
+    expectNoPassword(res.body);
   });
 
   it('returns 400 when required fields are missing', async () => {
@@ -90,24 +161,36 @@ describe('POST /api/users', () => {
 
 describe('GET /api/users/:id', () => {
   let createdUserId: string;
+  let readToken: string;
 
   beforeAll(async () => {
-    const { user } = await seedUserWithAuth();
+    const { user, token } = await seedUserWithAuth();
     createdUserId = user.id;
+    readToken = token;
   });
 
   afterAll(async () => {
     await cleanupDatabase();
   });
 
-  it('returns 200 for an existing user', async () => {
+  it('returns 401 without an auth token', async () => {
     const res = await request(app).get(`/api/users/${createdUserId}`);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 200 for an existing user', async () => {
+    const res = await request(app)
+      .get(`/api/users/${createdUserId}`)
+      .set('Authorization', `Bearer ${readToken}`);
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(createdUserId);
+    expectNoPassword(res.body);
   });
 
   it('returns 404 for a non-existent UUID', async () => {
-    const res = await request(app).get('/api/users/00000000-0000-0000-0000-000000000000');
+    const res = await request(app)
+      .get('/api/users/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${readToken}`);
     expect(res.status).toBe(404);
     expect(res.body.message).toMatch(/user not found/i);
   });
@@ -145,6 +228,7 @@ describe('PUT /api/users/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body.firstName).toBe('Updated');
     expect(res.body.id).toBe(userId);
+    expectNoPassword(res.body);
   });
 
   it('persists the update across a subsequent GET', async () => {
@@ -153,7 +237,9 @@ describe('PUT /api/users/:id', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ lastName: 'Persisted' });
 
-    const getRes = await request(app).get(`/api/users/${userId}`);
+    const getRes = await request(app)
+      .get(`/api/users/${userId}`)
+      .set('Authorization', `Bearer ${token}`);
     expect(getRes.body.lastName).toBe('Persisted');
   });
 
@@ -163,6 +249,27 @@ describe('PUT /api/users/:id', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ firstName: 'Ghost' });
     expect(res.status).toBe(404);
+  });
+
+  // Regression: User.password is select:false, so a load-merge-save cycle that
+  // does not explicitly select it would write NULL back over the hash and lock
+  // the user out. An unrelated field update must leave credentials intact.
+  it('leaves the password hash intact after an unrelated field update', async () => {
+    const { user, plainPassword } = await createTestUser();
+    const ownToken = await getAuthToken(app, user.email, plainPassword);
+
+    const updateRes = await request(app)
+      .put(`/api/users/${user.id}`)
+      .set('Authorization', `Bearer ${ownToken}`)
+      .send({ phoneNumber: '+45 12 34 56 78' });
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.phoneNumber).toBe('+45 12 34 56 78');
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: user.email, password: plainPassword });
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.token).toBeTruthy();
   });
 });
 
@@ -193,7 +300,9 @@ describe('DELETE /api/users/:id', () => {
       .delete(`/api/users/${user.id}`)
       .set('Authorization', `Bearer ${token}`);
 
-    const getRes = await request(app).get(`/api/users/${user.id}`);
+    const getRes = await request(app)
+      .get(`/api/users/${user.id}`)
+      .set('Authorization', `Bearer ${token}`);
     expect(getRes.status).toBe(404);
   });
 

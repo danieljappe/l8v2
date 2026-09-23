@@ -2,6 +2,9 @@ import { Router, Response, RequestHandler } from 'express';
 import { authenticateJWT, AuthRequest } from '../middleware/authMiddleware';
 import jwt from 'jsonwebtoken';
 import { UserService } from '../services/UserService';
+import { loginLimiter } from '../middleware/rateLimiters';
+import { toSafeUser, toSafeUsers } from '../utils/userDto';
+import { JWT_SECRET } from '../config/env';
 
 const router = Router();
 const userService = new UserService();
@@ -122,9 +125,19 @@ const userService = new UserService();
 const getAllUsers: RequestHandler = async (_req, res) => {
   try {
     const users = await userService.getAllUsers();
-    res.json(users);
+    res.json(toSafeUsers(users));
   } catch {
     res.status(500).json({ message: 'Error fetching users' });
+  }
+};
+
+// Public projection for the About / booking pages. Deliberately unauthenticated
+// and deliberately narrow — the full directory at GET / requires a JWT.
+const getTeamMembers: RequestHandler = async (_req, res) => {
+  try {
+    res.json(await userService.getTeamMembers());
+  } catch {
+    res.status(500).json({ message: 'Error fetching team members' });
   }
 };
 
@@ -136,7 +149,7 @@ const getUserById: RequestHandler = async (req, res) => {
       res.status(404).json({ message: 'User not found' });
       return;
     }
-    res.json(user);
+    res.json(toSafeUser(user));
   } catch {
     res.status(500).json({ message: 'Error fetching user' });
   }
@@ -156,7 +169,9 @@ const createUser: RequestHandler = async (req, res) => {
       return res.status(409).json({ message: 'User with this email already exists' });
     }
 
-    res.status(201).json(result.user);
+    // result.user is built in memory and still carries the hash, which
+    // select: false does not cover — the DTO is what strips it here.
+    res.status(201).json(toSafeUser(result.user));
   } catch {
     res.status(500).json({ message: 'Error creating user' });
   }
@@ -170,7 +185,7 @@ const updateUser: RequestHandler = async (req, res) => {
       res.status(404).json({ message: 'User not found' });
       return;
     }
-    res.json(result);
+    res.json(toSafeUser(result));
   } catch {
     res.status(500).json({ message: 'Error updating user' });
   }
@@ -203,7 +218,7 @@ const loginUser: RequestHandler = async (req, res) => {
     }
     const token = jwt.sign(
       { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
-      process.env.JWT_SECRET as string,
+      JWT_SECRET,
       { expiresIn: '1d' }
     );
     res.json({
@@ -222,12 +237,14 @@ const loginUser: RequestHandler = async (req, res) => {
   }
 };
 
-router.get('/', getAllUsers);
-router.get('/:id', getUserById);
+// /team must be registered before /:id, or Express matches it as id === 'team'.
+router.get('/team', getTeamMembers);
+router.get('/', authenticateJWT, getAllUsers);
+router.get('/:id', authenticateJWT, getUserById);
 router.post('/', authenticateJWT, createUser);
 router.put('/:id', authenticateJWT, updateUser);
 router.delete('/:id', authenticateJWT, deleteUser);
-router.post('/login', loginUser);
+router.post('/login', loginLimiter, loginUser);
 router.put('/:id/password', authenticateJWT, async (req: AuthRequest, res: Response) => {
   const { currentPassword, newPassword } = req.body;
   const userId = req.params.id;

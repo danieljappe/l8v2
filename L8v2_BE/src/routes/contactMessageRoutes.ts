@@ -1,45 +1,10 @@
 import { Router, RequestHandler } from 'express';
-import rateLimit from 'express-rate-limit';
 import { authenticateJWT } from '../middleware/authMiddleware';
 import { ContactMessageService } from '../services/ContactMessageService';
+import { contactFormLimiter } from '../middleware/rateLimiters';
 
 const router = Router();
 const contactMessageService = new ContactMessageService();
-
-// Stricter rate limiting specifically for contact form submissions
-// Limits: 3 submissions per 15 minutes per IP (much stricter than general rate limit)
-const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
-// IPv4-mapped loopback address produced by Node's net stack on dual-stack sockets.
-const LOCALHOST_V4_MAPPED = '::ffff:127.0.0.1';
-const contactFormLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isDevelopment ? 10 : 3, // 10 in dev, 3 in production per 15 minutes
-  message: {
-    error: 'Too many contact form submissions. Please wait 15 minutes before submitting again.',
-    retryAfter: 15
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => {
-    // Always skip in test environment (avoids in-memory store accumulation across test cases)
-    if (process.env.NODE_ENV === 'test') return true;
-    // Skip for localhost in development
-    if (isDevelopment) {
-      const ip = req.ip || req.socket.remoteAddress || '';
-      if (ip.includes('127.0.0.1') || ip.includes('::1') || ip === LOCALHOST_V4_MAPPED || ip === 'localhost') {
-        return true;
-      }
-    }
-    return false;
-  },
-  handler: (req, res) => {
-    console.log(`🚫 Contact form rate limit exceeded for IP: ${req.ip}`);
-    res.status(429).json({
-      error: 'Too many contact form submissions. Please wait 15 minutes before submitting again.',
-      retryAfter: 15
-    });
-  }
-});
 
 /**
  * @swagger

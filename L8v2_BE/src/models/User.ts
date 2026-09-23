@@ -14,7 +14,12 @@ export class User {
   @Column({ unique: true })
   email!: string;
 
-  @Column()
+  // select: false keeps the hash out of every find()/relation load, so it can
+  // never reach a response by accident — including via Artist.bookingUser and
+  // AuditLog.user. Read it explicitly with UserRepository's *WithPassword
+  // methods. This is a query-level concern only; the column is unchanged, so
+  // no migration is required.
+  @Column({ select: false })
   password!: string;
 
   @Column({ nullable: true })

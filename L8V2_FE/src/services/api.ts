@@ -308,6 +308,17 @@ export interface ContactMessage {
 }
 
 
+/** Public projection served by GET /users/team — no timestamps, no credentials. */
+export interface TeamMember {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  imageUrl?: string;
+  role?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -370,8 +381,12 @@ export const apiService = {
   deleteContactMessage: (id: string) => apiClient.delete<null>(`/contact/${id}`),
 
   // Users
+  // getUsers/getUser require a bearer token — admin surfaces only. Public pages
+  // must use getTeamMembers, or the 401 handler above will bounce anonymous
+  // visitors to /login.
   getUsers: () => apiClient.get<User[]>('/users'),
   getUser: (id: string) => apiClient.get<User>(`/users/${id}`),
+  getTeamMembers: () => apiClient.get<TeamMember[]>('/users/team'),
   updateUser: (id: string, user: Partial<User>) => apiClient.put<User>(`/users/${id}`, user),
   changePassword: (id: string, payload: { currentPassword: string; newPassword: string }) =>
     apiClient.put<{ message: string }>(`/users/${id}/password`, payload),

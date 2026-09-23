@@ -1,4 +1,7 @@
 import 'reflect-metadata';
+// Imported first: env.ts calls dotenv.config() and validates JWT_SECRET at
+// module load, so a missing secret fails the process before anything binds.
+import './config/env';
 import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -6,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { isDevelopment, skipLocalhostInDev } from './middleware/rateLimiters';
 import { AppDataSource } from './config/database';
 import userRoutes from './routes/userRoutes';
 import artistRoutes from './routes/artistRoutes';
@@ -79,13 +83,8 @@ export function createApp(): Express {
   // Request logging middleware
   app.use(requestLogger);
 
-  // Rate limiting configuration
-  const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || !process.env.NODE_ENV;
-
-  // IPv4-mapped loopback address produced by Node's net stack when the host
-  // receives a request from 127.0.0.1 on a dual-stack socket.
-  const LOCALHOST_V4_MAPPED = '::ffff:127.0.0.1';
-
+  // Rate limiting configuration. isDevelopment and the localhost bypass are
+  // shared with the login and contact-form limiters in middleware/rateLimiters.
   const rateLimitConfig = {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: isDevelopment ? 1000 : parseInt(process.env.RATE_LIMIT_MAX || '500'),
@@ -95,15 +94,7 @@ export function createApp(): Express {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req: express.Request, _res: express.Response) => {
-      if (isDevelopment) {
-        const ip = req.ip || req.socket.remoteAddress || '';
-        if (ip.includes('127.0.0.1') || ip.includes('::1') || ip === LOCALHOST_V4_MAPPED || ip === 'localhost') {
-          return true;
-        }
-      }
-      return false;
-    },
+    skip: (req: express.Request, _res: express.Response) => skipLocalhostInDev(req),
     handler: (req: express.Request, res: express.Response) => {
       console.log(`🚫 Rate limit exceeded for IP: ${req.ip}`);
       res.status(429).json({

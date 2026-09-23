@@ -605,6 +605,35 @@ describe('PUT /api/artists/:id — bookingUserId handling', () => {
     expect(clearRes.status).toBe(200);
     expect(clearRes.body.bookingUserId == null).toBe(true);
   });
+
+  // GET /api/artists is public and eager-loads the bookingUser relation, so a
+  // selectable password column would ship every booking agent's hash to
+  // anonymous visitors.
+  it('does not expose bookingUser.password on the public artist routes', async () => {
+    const { user, plainPassword } = await createTestUser();
+    const token = await getAuthToken(app, user.email, plainPassword);
+
+    const artist = await request(app)
+      .post('/api/artists')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Bookable Artist', isBookable: true });
+
+    await request(app)
+      .put(`/api/artists/${artist.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ bookingUserId: user.id });
+
+    // Anonymous list and detail reads.
+    const listRes = await request(app).get('/api/artists');
+    expect(listRes.status).toBe(200);
+    expect(JSON.stringify(listRes.body)).not.toContain('password');
+
+    const detailRes = await request(app).get(`/api/artists/${artist.body.id}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.bookingUser).toBeTruthy();
+    expect(detailRes.body.bookingUser).not.toHaveProperty('password');
+    expect(detailRes.body.bookingUser.email).toBe(user.email);
+  });
 });
 
 // ─── Embeddings on an artist that has no embeddings array ─────────────────────

@@ -17,9 +17,10 @@ export class BaseRepository<T extends ObjectLiteral> {
   }
 
   async create(data: DeepPartial<T>): Promise<T> {
-    console.log('BaseRepository: Creating entity with data:', data);
+    // Deliberately unlogged: this is the create path for every entity, so
+    // dumping `data` here wrote bcrypt hashes (UserService.createUser) and the
+    // full text of contact-form submissions to the application log.
     const entity = this.repository.create(data);
-    console.log('BaseRepository: Created entity:', entity);
     return this.repository.save(entity);
   }
 
