@@ -309,8 +309,11 @@ jobs:
 
       - name: Wait for servers to be ready
         run: |
+          # /api/health/ready, not the bare root: the root hits notFoundHandler,
+          # so it answers as soon as the socket is open — even with a dead
+          # database. -f makes curl treat the 503 as a failure and keep waiting.
           echo "Waiting for backend on :3000..."
-          timeout 60 bash -c 'until curl -s http://localhost:3000 -o /dev/null; do sleep 2; done'
+          timeout 60 bash -c 'until curl -sf http://localhost:3000/api/health/ready -o /dev/null; do sleep 2; done'
           echo "Waiting for frontend on :5173..."
           timeout 60 bash -c 'until curl -s http://localhost:5173 -o /dev/null; do sleep 2; done'
 
@@ -416,3 +419,20 @@ jobs:
 
             # Only restart pm2 if all builds succeeded
             pm2 restart /var/www/ecosystem.config.js --update-env
+
+            # pm2 restart exits 0 even when the app crash-loops, so without this
+            # gate a failed boot reports a green deploy. Poll rather than sleep:
+            # a healthy restart passes in seconds, and set -e turns the timeout
+            # into a failed deploy. Readiness (not liveness) so the migration
+            # that ran above is confirmed against a reachable database.
+            echo "Waiting for the backend to report ready..."
+            timeout 120 bash -c 'until curl -sf http://localhost:3000/api/health/ready -o /dev/null; do sleep 3; done'
+            echo "Backend is ready."
+
+      # The step above probes localhost, which proves the app but says nothing
+      # about the path the public actually uses. This one request catches a
+      # broken nginx config or an expired certificate.
+      - name: Verify the public endpoint through nginx
+        run: |
+          timeout 60 bash -c 'until curl -sf https://l8events.dk/api/health/ready -o /dev/null; do sleep 5; done'
+          echo "Public health check passed."

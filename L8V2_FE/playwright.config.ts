@@ -36,7 +36,10 @@ export default defineConfig({
     },
     {
       command: 'npm run dev',
-      url: 'http://localhost:3000/api/stats',
+      // Readiness probe rather than /api/stats: that endpoint ran five COUNT(*)
+      // queries on every poll, and a 503 here correctly keeps Playwright
+      // waiting until the database is actually reachable.
+      url: 'http://localhost:3000/api/health/ready',
       cwd: '../L8v2_BE',
       reuseExistingServer: true,
       timeout: 60_000,

@@ -26,6 +26,7 @@ import billettoRoutes from './routes/billettoRoutes';
 import statsRoutes from './routes/statsRoutes';
 import auditLogRoutes from './routes/auditLogRoutes';
 import timelineRoutes from './routes/timelineRoutes';
+import healthRoutes from './routes/healthRoutes';
 import path from 'path';
 
 dotenv.config();
@@ -79,6 +80,16 @@ export function createApp(): Express {
     maxAge: '1y',
     immutable: true,
   }));
+
+  // Health probes mount above requestLogger and the rate limiter, on purpose:
+  //   - above the limiter, so a monitor polling on a short interval can never
+  //     be throttled into a false alarm;
+  //   - above the logger, because a 10s poll would otherwise write ~8,600 lines
+  //     a day and bury real traffic. Probe failures surface via the monitor.
+  // They stay under /api so nginx's `location /api` proxies them; a bare
+  // /health would be swallowed by the SPA's try_files and answer 200 with HTML
+  // even when this process is dead.
+  app.use('/api/health', healthRoutes);
 
   // Request logging middleware
   app.use(requestLogger);
