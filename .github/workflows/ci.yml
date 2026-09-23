@@ -420,19 +420,52 @@ jobs:
             # Only restart pm2 if all builds succeeded
             pm2 restart /var/www/ecosystem.config.js --update-env
 
-            # pm2 restart exits 0 even when the app crash-loops, so without this
-            # gate a failed boot reports a green deploy. Poll rather than sleep:
-            # a healthy restart passes in seconds, and set -e turns the timeout
-            # into a failed deploy. Readiness (not liveness) so the migration
-            # that ran above is confirmed against a reachable database.
-            echo "Waiting for the backend to report ready..."
-            timeout 120 bash -c 'until curl -sf http://localhost:3000/api/health/ready -o /dev/null; do sleep 3; done'
-            echo "Backend is ready."
+            # Local readiness probe. Diagnostic, not the gate: it answers "is
+            # the Node process itself healthy", which is useful for attributing
+            # a failure, but the authoritative check is the public one in the
+            # next step, since that is what users actually reach. Failing the
+            # deploy here once cost us a red build on a perfectly healthy site.
+            #
+            # The port is read from the backend's own .env rather than
+            # hardcoded: the repo's docs disagree about which port production
+            # uses, and guessing 3000 is precisely how this gate first failed.
+            if command -v curl >/dev/null 2>&1; then
+              APP_PORT="$(sed -n 's/^[[:space:]]*PORT[[:space:]]*=//p' /var/www/l8v2/L8v2_BE/.env 2>/dev/null | tail -1 | tr -cd '0-9')"
+              APP_PORT="${APP_PORT:-3000}"
 
-      # The step above probes localhost, which proves the app but says nothing
-      # about the path the public actually uses. This one request catches a
-      # broken nginx config or an expired certificate.
+              echo "Probing readiness on 127.0.0.1:${APP_PORT} ..."
+              if timeout 90 bash -c "until curl -sf http://127.0.0.1:${APP_PORT}/api/health/ready -o /dev/null; do sleep 3; done"; then
+                echo "Backend reports ready on port ${APP_PORT}."
+              else
+                echo "WARNING: no readiness on 127.0.0.1:${APP_PORT} within 90s."
+                echo "The public check in the next step decides the deploy; diagnostics follow."
+                echo "----- last probe response -----"
+                curl -sS -i --max-time 10 "http://127.0.0.1:${APP_PORT}/api/health/ready" 2>&1 | head -20 || true
+                echo "----- listening ports -----"
+                { ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null; } | head -20 || true
+                echo "----- pm2 status -----"
+                pm2 list || true
+                echo "----- l8-backend recent logs -----"
+                pm2 logs l8-backend --lines 40 --nostream 2>&1 | tail -50 || true
+              fi
+            else
+              echo "WARNING: curl not installed on the VPS; skipping the local probe."
+            fi
+
+      # The authoritative gate. This is the path users actually take — DNS, TLS,
+      # nginx, Node, Postgres — so if it answers healthy the deploy is good, and
+      # if it does not, something real is broken regardless of what any
+      # process-level check says. A crash-looping app shows up here as a 502.
       - name: Verify the public endpoint through nginx
         run: |
-          timeout 60 bash -c 'until curl -sf https://l8events.dk/api/health/ready -o /dev/null; do sleep 5; done'
-          echo "Public health check passed."
+          URL="https://l8events.dk/api/health/ready"
+          echo "Probing ${URL} ..."
+          if timeout 90 bash -c "until curl -sf \"${URL}\" -o /dev/null; do sleep 5; done"; then
+            echo "Public health check passed:"
+            curl -s --max-time 15 "${URL}"; echo
+          else
+            echo "::error::${URL} did not report healthy within 90s after deploy"
+            echo "----- response -----"
+            curl -sS -i --max-time 15 "${URL}" 2>&1 | head -30 || true
+            exit 1
+          fi
