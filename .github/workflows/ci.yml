@@ -23,14 +23,19 @@
 
 name: CI
 
+# Runs on main only. Merging a PR previously triggered the pipeline twice —
+# once for the pull_request event and again for the resulting push to main —
+# so dropping the PR trigger roughly halves CI minutes. `develop` is listed
+# nowhere else and no such branch exists, so it goes too.
+#
+# workflow_dispatch lets you run the full pipeline manually against any branch
+# from the Actions tab. It adds no automatic runs, and the deploy job stays
+# gated on `github.event_name == 'push'`, so a manual run never deploys.
 on:
   push:
     branches:
       - main
-      - develop
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 defaults:
   run:
