@@ -1,6 +1,7 @@
 import { DeepPartial } from 'typeorm';
 import { User } from '../models/User';
 import { UserRepository } from '../repositories/UserRepository';
+import { TeamMember, toTeamMembers } from '../utils/userDto';
 import bcrypt from 'bcryptjs';
 
 export type CreateUserResult =
@@ -21,6 +22,14 @@ export class UserService {
 
   async getAllUsers(): Promise<User[]> {
     return this.userRepository.findAll();
+  }
+
+  /**
+   * Public projection for the About / booking pages. Name, role, photo and
+   * contact details only — these are already published on the website.
+   */
+  async getTeamMembers(): Promise<TeamMember[]> {
+    return toTeamMembers(await this.userRepository.findAll());
   }
 
   async getUserById(id: string): Promise<User | null> {
@@ -59,7 +68,7 @@ export class UserService {
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
-    const user = await this.userRepository.findByEmail(email);
+    const user = await this.userRepository.findByEmailWithPassword(email);
     if (!user) return null;
 
     const isValid = await bcrypt.compare(password, user.password);
@@ -68,7 +77,7 @@ export class UserService {
 
   /** Verifies the current password and sets a new (hashed) one. */
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<ChangePasswordResult> {
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userRepository.findByIdWithPassword(userId);
     if (!user) return { status: 'not_found' };
 
     const isCurrentValid = await bcrypt.compare(currentPassword, user.password);

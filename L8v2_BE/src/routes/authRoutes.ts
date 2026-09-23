@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserService } from '../services/UserService';
+import { loginLimiter } from '../middleware/rateLimiters';
+import { JWT_SECRET } from '../config/env';
 
 const router = Router();
 const userService = new UserService();
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
@@ -16,10 +17,11 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+    // 1d matches POST /api/users/login so session length is a single number.
     const token = jwt.sign(
       { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
     res.json({
       token,

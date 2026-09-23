@@ -144,10 +144,19 @@ export function useStats() {
 
 // ─── User hooks ───────────────────────────────────────────────────────────────
 
+/** Admin-only: GET /users requires a bearer token. */
 export function useUsers() {
   return adapt(useQuery({
     queryKey: ['users'],
     queryFn:  () => apiService.getUsers().then(r => r.data ?? []),
+  }));
+}
+
+/** Public: the narrow team projection used by the About page. */
+export function useTeamMembers() {
+  return adapt(useQuery({
+    queryKey: ['team-members'],
+    queryFn:  () => apiService.getTeamMembers().then(r => r.data ?? []),
   }));
 }
 

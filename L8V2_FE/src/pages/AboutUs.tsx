@@ -2,7 +2,7 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Users, Heart, Rocket, Star, ArrowRight, Linkedin, Github, Mail, Phone, AlertCircle, RefreshCw } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useEvents, useUsers } from '../hooks/useApi';
+import { useEvents, useTeamMembers } from '../hooks/useApi';
 import { useSEO } from '../hooks/useSEO';
 import { BOOKING_ENABLED } from '../config/features';
 
@@ -23,7 +23,7 @@ const useCountAnimation = (end: number, duration = 2) => {
 
 const AboutUs = () => {
   const { data: events, loading: eventsLoading } = useEvents();
-  const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useUsers();
+  const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useTeamMembers();
   const [eventCount, setEventCount] = useState(0);
 
   // SEO optimization

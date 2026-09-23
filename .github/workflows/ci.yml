@@ -144,6 +144,9 @@ jobs:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: l8v2_test
+      # Required: src/config/env.ts fails fast when JWT_SECRET is unset.
+      # .env.test is gitignored and so does not exist on the runner.
+      JWT_SECRET: ci-integration-jwt-secret
 
     steps:
       - uses: actions/checkout@v4
