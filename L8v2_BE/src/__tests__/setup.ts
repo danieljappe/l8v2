@@ -91,6 +91,20 @@ beforeAll(async () => {
     ORDER BY ti."event_id", ti."position"
   `);
 
+  // Mirrors 1777000000000-AddConsentRecordTable.
+  await AppDataSource.query(`
+    CREATE OR REPLACE FUNCTION purge_expired_consent_records(retention INTERVAL DEFAULT INTERVAL '24 months')
+    RETURNS INTEGER AS $$
+    DECLARE
+        deleted INTEGER;
+    BEGIN
+        DELETE FROM "consent_record" WHERE "created_at" < now() - retention;
+        GET DIAGNOSTICS deleted = ROW_COUNT;
+        RETURN deleted;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
   await AppDataSource.query(`
     CREATE OR REPLACE VIEW event_ticket_availability AS
     SELECT

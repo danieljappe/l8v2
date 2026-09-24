@@ -27,6 +27,8 @@ import statsRoutes from './routes/statsRoutes';
 import auditLogRoutes from './routes/auditLogRoutes';
 import timelineRoutes from './routes/timelineRoutes';
 import healthRoutes from './routes/healthRoutes';
+import consentRoutes from './routes/consentRoutes';
+import { startConsentRetentionJob } from './jobs/consentRetention';
 import path from 'path';
 
 dotenv.config();
@@ -144,6 +146,7 @@ export function createApp(): Express {
   app.use('/api/stats', statsRoutes);
   app.use('/api/audit-logs', auditLogRoutes);
   app.use('/api/timeline', timelineRoutes);
+  app.use('/api/consent', consentRoutes);
 
   // Swagger setup
   const swaggerOptions = {
@@ -184,6 +187,7 @@ const startServer = async () => {
   try {
     await AppDataSource.initialize();
     console.log('Database connected successfully');
+    startConsentRetentionJob();
 
     const app = createApp();
     app.listen(PORT, () => {
