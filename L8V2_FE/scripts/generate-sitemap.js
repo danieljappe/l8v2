@@ -203,6 +203,11 @@ const generateSitemap = async () => {
       url: '/contact',
       changefreq: 'monthly',
       priority: 0.6
+    },
+    {
+      url: '/privatlivspolitik',
+      changefreq: 'yearly',
+      priority: 0.3
     }
   ];
 

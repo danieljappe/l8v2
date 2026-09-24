@@ -1,7 +1,7 @@
 import type { AuditLogPage, TimelineItem, TimelineItemType } from '../types/admin';
 
 // API Base URL - adjust this based on your backend deployment
-const API_BASE_URL = import.meta.env.VITE_API_URL || (() => {
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (() => {
   // Auto-detect environment
   const currentOrigin = window.location.origin;
   if (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')) {

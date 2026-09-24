@@ -6,4 +6,5 @@ export * from './EventArtist';
 export * from './GalleryImage';
 export * from './ContactMessage';
 export * from './AuditLog';
-export * from './BillettoEventData'; 
+export * from './BillettoEventData';
+export * from './ConsentRecord';

@@ -80,3 +80,23 @@ export const contactFormLimiter = rateLimit({
     });
   },
 });
+
+/**
+ * Consent proof log. A visitor makes a handful of decisions at most; 20 per
+ * 15 minutes leaves room for toggling while stopping table flooding.
+ * The handler deliberately does not log the IP: this endpoint exists to prove
+ * consent without holding identifying data, and that includes its logs.
+ */
+export const consentLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    if (process.env.NODE_ENV === 'test') return true;
+    return skipLocalhostInDev(req);
+  },
+  handler: (_req, res) => {
+    res.status(429).json({ error: 'Too many consent submissions. Please try again later.' });
+  },
+});

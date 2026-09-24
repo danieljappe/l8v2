@@ -54,7 +54,6 @@ const PlatformChoice: React.FC = () => {
 
   const handlePlatformChoice = (platform: string) => {
     console.log('[PlatformChoice] selected:', platform, 'at', performance.now().toFixed(1), 'ms');
-    localStorage.setItem('l8-platform-choice', platform);
     if (platform === 'events') {
       void navigate('/home');
     } else if (platform === 'booking' && BOOKING_ENABLED) {

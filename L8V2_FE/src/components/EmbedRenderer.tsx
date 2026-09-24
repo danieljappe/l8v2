@@ -1,6 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
+import { useHasConsent } from '../consent/useConsent';
+import { IFRAME_ALLOW, extractIframeSrc, safeEmbedSrc } from '../consent/embedPolicy';
+import ExternalContentPlaceholder from '../consent/ExternalContentPlaceholder';
 
 interface EmbedRendererProps {
   embedCode: string;
@@ -9,71 +12,24 @@ interface EmbedRendererProps {
   className?: string;
 }
 
-const EmbedRenderer: React.FC<EmbedRendererProps> = ({ 
+const HEIGHTS: Record<EmbedRendererProps['platform'], number> = {
+  spotify: 352,
+  youtube: 315,
+  soundcloud: 300,
+};
+
+const EmbedRenderer: React.FC<EmbedRendererProps> = ({
   embedCode,
   platform,
-  title: _title,
+  title,
   className = ''
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const allowed = useHasConsent('external_media');
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const src = useMemo(() => safeEmbedSrc(platform, extractIframeSrc(embedCode)), [embedCode, platform]);
+  const height = HEIGHTS[platform];
 
-  useEffect(() => {
-    if (containerRef.current && embedCode) {
-      // Clear previous content
-      containerRef.current.innerHTML = '';
-      
-      // Create a temporary div to parse the embed code
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = embedCode;
-      
-      // Find the iframe
-      const iframe = tempDiv.querySelector('iframe');
-      if (iframe) {
-        // Sanitize the iframe attributes
-        const sanitizedIframe = document.createElement('iframe');
-        
-        // Copy safe attributes
-        const safeAttributes = ['src', 'width', 'height', 'frameborder', 'allowfullscreen', 'allow', 'loading', 'title'];
-        safeAttributes.forEach(attr => {
-          if (iframe.hasAttribute(attr)) {
-            sanitizedIframe.setAttribute(attr, iframe.getAttribute(attr) || '');
-          }
-        });
-        
-        // Set default attributes for better responsiveness
-        sanitizedIframe.style.width = '100%';
-        sanitizedIframe.style.height = 'auto';
-        sanitizedIframe.style.borderRadius = '12px';
-        sanitizedIframe.style.border = 'none';
-        
-        // Set platform-specific heights
-        switch (platform) {
-          case 'spotify':
-            sanitizedIframe.style.height = '352px';
-            break;
-          case 'youtube':
-            sanitizedIframe.style.height = '315px';
-            break;
-          case 'soundcloud':
-            sanitizedIframe.style.height = '300px';
-            break;
-        }
-        
-        // Add loading and error handlers
-        sanitizedIframe.onload = () => setIsLoaded(true);
-        sanitizedIframe.onerror = () => setHasError(true);
-        
-        containerRef.current.appendChild(sanitizedIframe);
-      } else {
-        setHasError(true);
-      }
-    }
-  }, [embedCode, platform]);
-
-
-  if (hasError) {
+  if (!src) {
     return (
       <div className={`bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 text-center ${className}`}>
         <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
@@ -85,13 +41,18 @@ const EmbedRenderer: React.FC<EmbedRendererProps> = ({
     );
   }
 
+  // No iframe, and so no request to the provider, until external media is allowed.
+  if (!allowed) {
+    return <ExternalContentPlaceholder provider={platform} height={height} className={className} />;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={`bg-white/5 backdrop-blur-sm rounded-xl p-0 border border-white/10 ${className}`}
     >
-      <div className="relative">
+      <div className="relative" style={{ minHeight: `${height}px` }}>
         {!isLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/5 rounded-lg">
             <div className="flex items-center space-x-2 text-white/60">
@@ -100,11 +61,16 @@ const EmbedRenderer: React.FC<EmbedRendererProps> = ({
             </div>
           </div>
         )}
-        
-        <div 
-          ref={containerRef}
-          className="w-full"
-          style={{ minHeight: platform === 'spotify' ? '352px' : platform === 'youtube' ? '315px' : '300px' }}
+        <iframe
+          src={src}
+          title={title || `${platform} embed`}
+          allow={IFRAME_ALLOW[platform]}
+          allowFullScreen
+          loading="lazy"
+          // YouTube refuses to play without a referrer origin.
+          referrerPolicy="strict-origin-when-cross-origin"
+          onLoad={() => setIsLoaded(true)}
+          style={{ width: '100%', height: `${height}px`, border: 'none', borderRadius: '12px' }}
         />
       </div>
     </motion.div>

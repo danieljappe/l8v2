@@ -51,6 +51,7 @@ const Breadcrumbs: React.FC = () => {
     gallery: 'Galleri',
     about: 'Om Os',
     contact: 'Kontakt',
+    privatlivspolitik: 'Privatlivspolitik',
     admin: 'Admin',
     booking: 'Booking',
   };
