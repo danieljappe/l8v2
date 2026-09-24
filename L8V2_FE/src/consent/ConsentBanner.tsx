@@ -67,7 +67,9 @@ const CategoryRow: React.FC<{
                 <dt className="text-white/50">Formål</dt>
                 <dd>{item.purpose}</dd>
                 <dt className="text-white/50">Navn</dt>
-                <dd className="break-all font-mono text-xs leading-5">{item.names.join(', ')}</dd>
+                <dd className={item.setBy === 'first_party' ? 'font-mono text-xs leading-5' : undefined}>
+                  {item.names.join(', ')}
+                </dd>
                 <dt className="text-white/50">Type</dt>
                 <dd>
                   {item.storageType === 'cookie' ? 'Cookie' : 'Lokal lagring'}

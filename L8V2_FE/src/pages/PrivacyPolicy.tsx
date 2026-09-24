@@ -27,7 +27,7 @@ const PrivacyPolicy: React.FC = () => {
   }, []);
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 pb-16 pt-28 text-white/85 leading-relaxed">
+    <div className="container mx-auto max-w-4xl px-4 pb-16 pt-28 text-white/85 leading-relaxed">
       <article>{content}</article>
     </div>
   );

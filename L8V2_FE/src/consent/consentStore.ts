@@ -43,14 +43,13 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
-function parse(raw: string | null, now: number): StoredConsent | null {
+function parse(raw: string | null): StoredConsent | null {
   if (!raw) return null;
   try {
     const data = JSON.parse(raw) as Partial<StoredConsent>;
     if (typeof data.id !== 'string' || typeof data.decidedAt !== 'string') return null;
     if (data.version !== CONSENT_VERSION) return null;
-    const decided = Date.parse(data.decidedAt);
-    if (Number.isNaN(decided) || now - decided > CONSENT_MAX_AGE_MS) return null;
+    if (Number.isNaN(Date.parse(data.decidedAt))) return null;
     const categories = {} as ConsentChoices;
     for (const cat of OPTIONAL_CATEGORIES) {
       // Anything but an explicit `true` is a refusal: no pre-ticked defaults.
@@ -71,9 +70,10 @@ function parse(raw: string | null, now: number): StoredConsent | null {
  */
 export function readConsent(now: number = Date.now()): StoredConsent | null {
   const raw = safeGet(CONSENT_STORAGE_KEY);
-  if (cached && cached.raw === raw) return cached.parsed;
-  const parsed = parse(raw, now);
-  cached = { raw, parsed };
+  if (!cached || cached.raw !== raw) cached = { raw, parsed: parse(raw) };
+  const parsed = cached.parsed;
+  // Checked on every read, outside the cache: a tab left open can cross the line.
+  if (parsed && now - Date.parse(parsed.decidedAt) > CONSENT_MAX_AGE_MS) return null;
   return parsed;
 }
 

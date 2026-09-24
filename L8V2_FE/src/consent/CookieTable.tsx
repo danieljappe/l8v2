@@ -18,7 +18,13 @@ const CookieTable: React.FC = () => (
           itemsInCategory(category.id).map((item) => (
             <tr key={item.id} className="border-t border-white/10 align-top">
               <td className="px-3 py-2">{category.title}</td>
-              <td className="break-all px-3 py-2 font-mono text-xs leading-5">{item.names.join(', ')}</td>
+              <td className="px-3 py-2">
+                {item.setBy === 'first_party'
+                  ? item.names.map((n) => (
+                      <code key={n} className="block whitespace-nowrap font-mono text-xs leading-5">{n}</code>
+                    ))
+                  : item.names.join(', ')}
+              </td>
               <td className="px-3 py-2">{item.provider}</td>
               <td className="px-3 py-2">{item.purpose}</td>
               <td className="px-3 py-2">
