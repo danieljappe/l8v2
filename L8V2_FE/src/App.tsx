@@ -12,6 +12,7 @@ import BookingArtists from './pages/BookingArtists';
 import ArtistPage from './pages/ArtistPage';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import Header from './components/Header';
 import PlatformRouter from './components/PlatformRouter';
 import ScrollToTop from './components/ScrollToTop';
@@ -69,6 +70,7 @@ const AppContent = () => {
             <Route path="/about" element={<AboutUs />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/artists" element={<Artists />} />
+            <Route path="/privatlivspolitik" element={<PrivacyPolicy />} />
             {BOOKING_ENABLED && (
               <>
                 <Route path="/booking" element={<BookingHome />} />
