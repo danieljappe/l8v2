@@ -94,7 +94,9 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: L8v2_BE/package-lock.json
+          cache-dependency-path: |
+            L8v2_BE/package-lock.json
+            L8V2_FE/package-lock.json
 
       - name: Install backend dependencies
         working-directory: L8v2_BE
@@ -103,6 +105,15 @@ jobs:
       - name: Run unit tests
         working-directory: L8v2_BE
         run: npm run test:unit
+
+      - name: Install frontend dependencies
+        working-directory: L8V2_FE
+        run: npm ci
+
+      # Vitest + jsdom: consent store, GA gating and cookie deletion.
+      - name: Run frontend unit tests
+        working-directory: L8V2_FE
+        run: npm test
 
   # =========================================================================
   # JOB 3: integration-test
