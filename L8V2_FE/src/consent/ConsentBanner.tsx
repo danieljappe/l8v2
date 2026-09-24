@@ -54,46 +54,9 @@ const CategoryRow: React.FC<{
       <p id={descId} className="mt-1 text-sm text-white/70">
         {category.description}
       </p>
-      <details className="mt-2 text-sm">
-        <summary className="cursor-pointer text-l8-blue-light hover:underline">
-          Vis udbydere og lagring ({items.length})
-        </summary>
-        <ul className="mt-2 space-y-3">
-          {items.map((item) => (
-            <li key={item.id} className="rounded-lg border border-white/10 p-3 text-white/80">
-              <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
-                <dt className="text-white/50">Udbyder</dt>
-                <dd>{item.provider}</dd>
-                <dt className="text-white/50">Formål</dt>
-                <dd>{item.purpose}</dd>
-                <dt className="text-white/50">Navn</dt>
-                <dd className={item.setBy === 'first_party' ? 'font-mono text-xs leading-5' : undefined}>
-                  {item.names.join(', ')}
-                </dd>
-                <dt className="text-white/50">Type</dt>
-                <dd>
-                  {item.storageType === 'cookie' ? 'Cookie' : 'Lokal lagring'}
-                  {item.setBy === 'third_party' ? ' (sættes af udbyderen)' : ''}
-                </dd>
-                <dt className="text-white/50">Varighed</dt>
-                <dd>{item.duration}</dd>
-                <dt className="text-white/50">Uden for EU/EØS</dt>
-                <dd>{item.transfersOutsideEEA ? 'Ja, kan overføres' : 'Nej'}</dd>
-              </dl>
-              {item.privacyPolicyUrl && (
-                <a
-                  href={item.privacyPolicyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block text-l8-blue-light underline"
-                >
-                  Udbyderens privatlivspolitik
-                </a>
-              )}
-            </li>
-          ))}
-        </ul>
-      </details>
+      {!category.required && (
+        <p className="mt-1 text-xs text-white/50">Bruges af: {items.map((i) => i.displayName).join(', ')}</p>
+      )}
     </li>
   );
 };
@@ -164,9 +127,9 @@ const ConsentBanner: React.FC = () => {
         </h2>
 
         <p id={descId} className="mt-2 text-sm text-white/80">
-          Vi vil gerne bruge Google Analytics til anonym statistik og vise kort, musik og video fra Google
-          Maps, Spotify, YouTube og SoundCloud. Det kræver dit samtykke. Siden virker fint uden. Du kan altid
-          ændre dit valg under &quot;Cookie-indstillinger&quot; nederst på siden. Læs mere i vores{' '}
+          Vi vil gerne se, hvordan siden bliver brugt, og vise kort, musik og videoer. Det kræver cookies, og
+          du bestemmer selv. Siden virker fint uanset hvad, og du kan altid ændre dit valg nederst på siden.
+          Læs mere i vores{' '}
           <Link to="/privatlivspolitik" className="text-l8-blue-light underline">
             privatlivspolitik
           </Link>

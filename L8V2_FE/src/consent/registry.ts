@@ -47,6 +47,8 @@ export interface RegistryItem {
   id: RegistryItemId;
   category: ConsentCategoryId;
   provider: string;
+  /** Short, familiar name shown in the banner and on placeholders, e.g. "Google Maps". */
+  displayName: string;
   /** Danish, shown to visitors. */
   purpose: string;
   storageType: 'cookie' | 'localStorage';
@@ -62,22 +64,19 @@ export const CONSENT_CATEGORIES: readonly ConsentCategory[] = [
   {
     id: 'necessary',
     title: 'Nødvendige',
-    description:
-      'Gemmer dit cookievalg og holder administratorer logget ind. Siden kan ikke fungere uden, så de kan ikke fravælges.',
+    description: 'Får siden til at virke og husker dit valg her. De kan ikke slås fra.',
     required: true,
   },
   {
     id: 'statistics',
     title: 'Statistik',
-    description:
-      'Hjælper os med at forstå, hvordan siden bruges, via Google Analytics. Indlæses kun, hvis du siger ja.',
+    description: 'Viser os anonymt, hvor mange der besøger siden, og hvad de kigger på.',
     required: false,
   },
   {
     id: 'external_media',
     title: 'Eksternt indhold',
-    description:
-      'Kort fra Google Maps og musik/video fra Spotify, YouTube og SoundCloud. Udbyderne sætter egne cookies og modtager bl.a. din IP-adresse, når indholdet vises.',
+    description: 'Viser kort, musik og videoer direkte på siden. Tjenesterne sætter selv cookies.',
     required: false,
   },
 ];
@@ -88,6 +87,7 @@ export const CONSENT_REGISTRY: readonly RegistryItem[] = [
     id: 'consent_choice',
     category: 'necessary',
     provider: 'L8 Events',
+    displayName: 'Dit cookievalg',
     purpose: 'Husker dit cookievalg, så vi ikke spørger igen ved hvert besøg.',
     storageType: 'localStorage',
     setBy: 'first_party',
@@ -99,6 +99,7 @@ export const CONSENT_REGISTRY: readonly RegistryItem[] = [
     id: 'admin_auth_token',
     category: 'necessary',
     provider: 'L8 Events',
+    displayName: 'Login for administratorer',
     purpose: 'Holder administratorer logget ind. Sættes kun ved login på administrationssiden.',
     storageType: 'localStorage',
     setBy: 'first_party',
@@ -112,6 +113,7 @@ export const CONSENT_REGISTRY: readonly RegistryItem[] = [
     id: 'google_analytics',
     category: 'statistics',
     provider: 'Google Ireland Ltd. (Google Analytics 4)',
+    displayName: 'Google Analytics',
     purpose: 'Anonym statistik over sidevisninger og brug af siden.',
     storageType: 'cookie',
     setBy: 'first_party',
@@ -126,6 +128,7 @@ export const CONSENT_REGISTRY: readonly RegistryItem[] = [
     id: 'google_maps',
     category: 'external_media',
     provider: 'Google Ireland Ltd. (Google Maps)',
+    displayName: 'Google Maps',
     purpose: 'Viser kort over spillestedet på eventsider.',
     storageType: 'cookie',
     setBy: 'third_party',
@@ -138,6 +141,7 @@ export const CONSENT_REGISTRY: readonly RegistryItem[] = [
     id: 'spotify',
     category: 'external_media',
     provider: 'Spotify AB',
+    displayName: 'Spotify',
     purpose: 'Afspiller kunstneres musik på kunstnersider.',
     storageType: 'cookie',
     setBy: 'third_party',
@@ -150,6 +154,7 @@ export const CONSENT_REGISTRY: readonly RegistryItem[] = [
     id: 'youtube',
     category: 'external_media',
     provider: 'Google Ireland Ltd. (YouTube, udvidet privatlivstilstand)',
+    displayName: 'YouTube',
     purpose: 'Afspiller kunstneres videoer på kunstnersider.',
     storageType: 'cookie',
     setBy: 'third_party',
@@ -162,6 +167,7 @@ export const CONSENT_REGISTRY: readonly RegistryItem[] = [
     id: 'soundcloud',
     category: 'external_media',
     provider: 'SoundCloud Global Limited & Co. KG',
+    displayName: 'SoundCloud',
     purpose: 'Afspiller kunstneres musik på kunstnersider.',
     storageType: 'cookie',
     setBy: 'third_party',
@@ -181,11 +187,3 @@ export function getRegistryItem(id: RegistryItemId): RegistryItem {
 export function itemsInCategory(category: ConsentCategoryId): RegistryItem[] {
   return CONSENT_REGISTRY.filter((i) => i.category === category);
 }
-
-/** Short provider name for placeholders, e.g. "Google Maps" rather than the legal entity. */
-export const EMBED_DISPLAY_NAMES: Record<'google_maps' | 'spotify' | 'youtube' | 'soundcloud', string> = {
-  google_maps: 'Google Maps',
-  spotify: 'Spotify',
-  youtube: 'YouTube',
-  soundcloud: 'SoundCloud',
-};

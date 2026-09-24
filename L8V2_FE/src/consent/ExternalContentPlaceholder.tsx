@@ -1,6 +1,6 @@
 import React from 'react';
 import { grantCategory, openConsentSettings } from './consentStore';
-import { EMBED_DISPLAY_NAMES } from './registry';
+import { getRegistryItem } from './registry';
 import type { EmbedProvider } from './embedPolicy';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
  * no request to the provider: no thumbnail, no preconnect, nothing.
  */
 const ExternalContentPlaceholder: React.FC<Props> = ({ provider, height, className = '' }) => {
-  const name = EMBED_DISPLAY_NAMES[provider];
+  const name = getRegistryItem(provider).displayName;
   return (
     <div
       className={`flex flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-white ${className}`}
