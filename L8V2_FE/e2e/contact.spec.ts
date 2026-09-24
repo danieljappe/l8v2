@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { seedConsent } from './helpers/consent';
 
 test.beforeEach(async ({ page }) => {
-  // Pre-set cookie consent so the banner doesn't cover the form
-  await page.addInitScript(() => {
-    localStorage.setItem('cookieConsent', JSON.stringify({ necessary: true, analytics: true, marketing: true }));
-  });
+  // Record a reject-all choice so the consent banner doesn't cover the form
+  await seedConsent(page);
   await page.goto('/contact');
 });
 

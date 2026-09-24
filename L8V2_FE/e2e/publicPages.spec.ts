@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { seedConsent } from './helpers/consent';
 
-// Dismiss the cookie consent banner before every test so it doesn't obscure elements
+// Record a reject-all choice so the consent banner doesn't cover elements
+// (and nothing third-party loads during unrelated tests).
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('cookieConsent', JSON.stringify({ necessary: true, analytics: true, marketing: true }));
-  });
+  await seedConsent(page);
 });
 
 // ─── Smoke tests: all public pages render without crashing ────────────────────

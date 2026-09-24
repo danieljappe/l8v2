@@ -16,17 +16,10 @@ import Header from './components/Header';
 import PlatformRouter from './components/PlatformRouter';
 import ScrollToTop from './components/ScrollToTop';
 import { useAuth } from './hooks/useAuth';
-import CookieSettingsButton from './components/CookieSettingsButton';
-import CookieConsentBanner from './components/CookieConsentBanner';
-import GoogleAnalyticsLoader from './components/GoogleAnalyticsLoader';
+import Footer from './components/Footer';
+import ConsentBanner from './consent/ConsentBanner';
 import { AuthProvider } from './contexts/AuthContext';
 import { BOOKING_ENABLED } from './config/features';
-
-function CookieSettingsButtonGuard() {
-  const { pathname } = useLocation();
-  if (pathname.startsWith('/admin')) return null;
-  return <CookieSettingsButton />;
-}
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
   const { isAuthenticated, loading } = useAuth();
@@ -94,6 +87,7 @@ const AppContent = () => {
             <Route path="/admin" element={<PrivateRoute><Admin /></PrivateRoute>} />
           </Routes>
         </main>
+        {!isAdminPage && !isLoginPage && <Footer />}
       </div>
     </div>
   );
@@ -102,13 +96,13 @@ const AppContent = () => {
 const App = () => {
   return (
     <Router>
+      {/* First in DOM order so keyboard users reach it on their first Tab, and
+          outside PlatformRouter so it also shows on the platform-choice screen. */}
+      <ConsentBanner />
       <AuthProvider>
         <PlatformRouter>
           <ScrollToTop />
           <AppContent />
-          <GoogleAnalyticsLoader />
-          <CookieSettingsButtonGuard />
-          <CookieConsentBanner />
         </PlatformRouter>
       </AuthProvider>
     </Router>

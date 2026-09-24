@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App.tsx';
 import './index.css';
+import { startConsentEffects, startConsentProofLogging } from './consent/consentEffects';
+
+// Before the first render: applies a stored choice (loads GA only if
+// `statistics` was granted) and clears stale analytics cookies otherwise.
+startConsentEffects();
+startConsentProofLogging();
 
 const queryClient = new QueryClient({
   defaultOptions: {

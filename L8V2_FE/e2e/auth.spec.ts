@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { seedConsent } from './helpers/consent';
 
 // Credentials must exist in the running dev database.
 // Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD as environment variables,
@@ -6,11 +7,10 @@ import { test, expect } from '@playwright/test';
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'admin@l8events.dk';
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? '';
 
-// Dismiss the cookie consent banner before every test so it doesn't cover form elements
+// Record a reject-all choice so the consent banner doesn't cover elements
+// (and nothing third-party loads during unrelated tests).
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('cookieConsent', JSON.stringify({ necessary: true, analytics: true, marketing: true }));
-  });
+  await seedConsent(page);
 });
 
 // ─── PrivateRoute guard ────────────────────────────────────────────────────────
